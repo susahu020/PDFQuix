@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Redact PDF — Black Out Text — PDFQuick</title>
+  <meta name="description" content="Redact sensitive text and areas in your PDF. Draw black boxes over content to permanently hide it. Free, no signup."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    .viewer-wrap {
+      position: relative; display: inline-block;
+      border: 1px solid var(--border); border-radius: var(--radius-md);
+      overflow: hidden; cursor: crosshair; user-select: none;
+    }
+    #viewerCanvas { display: block; }
+    #redactCanvas {
+      position: absolute; top: 0; left: 0;
+      cursor: crosshair; touch-action: none;
+    }
+    .page-nav { display: flex; align-items: center; gap: 12px; margin: 12px 0; justify-content: center; }
+    .btn-nav {
+      padding: 6px 16px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--white); cursor: pointer; font-size: 13px; font-weight: 500; transition: all .15s;
+    }
+    .btn-nav:hover:not(:disabled) { border-color: var(--red); color: var(--red); background: var(--red-light); }
+    .btn-nav:disabled { opacity: .4; cursor: not-allowed; }
+    .page-indicator { font-size: 13px; color: var(--text-secondary); }
+    .toolbar {
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+      margin-bottom: 12px;
+    }
+    .tool-toggle {
+      padding: 8px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-md);
+      background: var(--white); cursor: pointer; font-size: 13px; font-weight: 500;
+      color: var(--text-secondary); transition: all .15s;
+    }
+    .tool-toggle.active { border-color: var(--red); background: var(--red-light); color: var(--red); }
+    .color-opts { display: flex; gap: 6px; align-items: center; }
+    .color-opt {
+      width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+      border: 2px solid transparent; transition: transform .15s;
+    }
+    .color-opt:hover, .color-opt.active { border-color: var(--text-primary); transform: scale(1.2); }
+    .redact-count { font-size: 13px; color: var(--text-muted); margin-left: auto; }
+    .warn-banner {
+      background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md);
+      padding: 12px 16px; font-size: 13px; color: #92400e; margin-bottom: 16px;
+      display: flex; gap: 8px;
+    }
+    .viewer-scroll { overflow-x: auto; margin-top: 4px; }
+    .viewer-center { display: flex; justify-content: center; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="container header-inner">
+    <a href="../index.html" class="logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="8" fill="#E63946"/>
+        <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
+        <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
+      </svg>
+      PDFQuick
+    </a>
+  </div>
+</header>
+
+<section class="tool-page-hero">
+  <div class="container">
+    <a href="../index.html" class="back-link">← All tools</a>
+    <h1>Redact PDF</h1>
+    <p>Draw black boxes over sensitive information to permanently hide it. Protects names, numbers, addresses, and more.</p>
+  </div>
+</section>
+
+<section class="tool-page-body">
+  <div class="container">
+
+    <div class="warn-banner">
+      <span>⚠️</span>
+      <div><strong>Permanent redaction:</strong> Once applied and downloaded, the hidden content cannot be recovered. This tool draws opaque boxes over content — the underlying text is replaced, not just covered.</div>
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept=".pdf"/>
+      <div class="dropzone-icon">🖊️</div>
+      <h3>Drop your PDF here</h3>
+      <p>Draw boxes over text or areas you want to hide</p>
+      <button class="btn-upload" onclick="event.stopPropagation();document.getElementById('fileInput').click()">Choose PDF</button>
+    </div>
+
+    <div id="toolOptions" style="display:none">
+
+      <div class="toolbar">
+        <button class="tool-toggle active" id="toolRedact" onclick="setTool('redact', this)">⬛ Redact (draw box)</button>
+        <button class="tool-toggle" id="toolErase" onclick="setTool('erase', this)">↩ Undo last box</button>
+        <div class="color-opts">
+          <span style="font-size:12px;font-weight:500;color:var(--text-secondary)">Color:</span>
+          <div class="color-opt active" style="background:#000000" data-color="#000000" onclick="setRedactColor(this)" title="Black"></div>
+          <div class="color-opt" style="background:#1d4ed8" data-color="#1d4ed8" onclick="setRedactColor(this)" title="Blue"></div>
+          <div class="color-opt" style="background:#dc2626" data-color="#dc2626" onclick="setRedactColor(this)" title="Red"></div>
+          <div class="color-opt" style="background:#f8fafc;border:1px solid var(--border)" data-color="#f8fafc" onclick="setRedactColor(this)" title="White (erase)"></div>
+        </div>
+        <span class="redact-count" id="redactCount">0 redactions</span>
+      </div>
+
+      <div class="page-nav">
+        <button class="btn-nav" id="prevPage" onclick="changePage(-1)" disabled>← Prev</button>
+        <span class="page-indicator" id="pageIndicator">Page 1 of 1</span>
+        <button class="btn-nav" id="nextPage" onclick="changePage(1)">Next →</button>
+      </div>
+
+      <div class="viewer-scroll">
+        <div class="viewer-center">
+          <div class="viewer-wrap" id="viewerWrap">
+            <canvas id="viewerCanvas"></canvas>
+            <canvas id="redactCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size:12px;color:var(--text-muted);text-align:center;margin-top:8px;">
+        Click and drag to draw a redaction box. Changes are shown live.
+      </div>
+
+      <div class="action-bar" style="margin-top:16px;">
+        <button class="btn-action" id="applyBtn">⬛ Apply Redactions & Download</button>
+        <button class="btn-upload" style="margin-left:12px;margin-top:0;background:var(--white);color:var(--text-secondary);border:1px solid var(--border);" onclick="clearAllRedactions()">Clear all</button>
+        <div class="progress-wrap" id="progressWrap" style="display:none">
+          <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+          <div class="progress-label">Applying redactions...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="result-box" id="resultBox">
+      <h3>✅ PDF redacted!</h3>
+      <p id="resultDesc"></p>
+      <button class="btn-download" id="downloadBtn">⬇ Download redacted PDF</button>
+      <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Redact another</button>
+    </div>
+
+    <div class="how-to">
+      <h2>How to redact a PDF</h2>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><h4>Upload PDF</h4><p>Choose the PDF with sensitive information.</p></div>
+        <div class="step"><div class="step-num">2</div><h4>Draw boxes</h4><p>Click and drag over any text or area to redact.</p></div>
+        <div class="step"><div class="step-num">3</div><h4>Review all pages</h4><p>Navigate pages and add more redactions as needed.</p></div>
+        <div class="step"><div class="step-num">4</div><h4>Apply & download</h4><p>Redactions are permanently burned into the PDF.</p></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <span class="logo-small">PDFQuick</span>
+    <p>Free PDF tools for everyone.</p>
+  </div>
+</footer>
+
+<script src="../js/utils.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const { PDFDocument, rgb } = PDFLib;
+
+let pdfFile    = null;
+let pdfJsDoc   = null;
+let totalPages = 0;
+let currentPage= 1;
+let viewScale  = 1;
+let redactions = {}; // { pageNum: [{x,y,w,h,color}] }
+let currentTool= 'redact';
+let redactColor= '#000000';
+let isDrawing  = false;
+let startX, startY;
+
+const dropzone      = document.getElementById('dropzone');
+const fileInput     = document.getElementById('fileInput');
+const toolOpts      = document.getElementById('toolOptions');
+const viewerCanvas  = document.getElementById('viewerCanvas');
+const redactCanvas  = document.getElementById('redactCanvas');
+const applyBtn      = document.getElementById('applyBtn');
+const progressWrap  = document.getElementById('progressWrap');
+const resultBox     = document.getElementById('resultBox');
+const resultDesc    = document.getElementById('resultDesc');
+const downloadBtn   = document.getElementById('downloadBtn');
+const vCtx          = viewerCanvas.getContext('2d');
+const rCtx          = redactCanvas.getContext('2d');
+
+setupDropzone(dropzone, f => handleFile(f[0]));
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+async function handleFile(file) {
+  if (!file.name.endsWith('.pdf') && file.type !== 'application/pdf') { showError('Please upload a PDF.'); return; }
+  pdfFile = file;
+  clearError();
+  resultBox.classList.remove('visible');
+  redactions = {};
+  currentPage = 1;
+  const buf  = await readFileAsArrayBuffer(file);
+  pdfJsDoc   = await pdfjsLib.getDocument({ data: buf }).promise;
+  totalPages = pdfJsDoc.numPages;
+  toolOpts.style.display = 'block';
+  await renderPage();
+}
+
+function setTool(tool, el) {
+  currentTool = tool;
+  document.querySelectorAll('.tool-toggle').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  if (tool === 'erase') undoLastRedaction();
+}
+
+function setRedactColor(el) {
+  document.querySelectorAll('.color-opt').forEach(d => d.classList.remove('active'));
+  el.classList.add('active');
+  redactColor = el.dataset.color;
+}
+
+async function renderPage() {
+  const page     = await pdfJsDoc.getPage(currentPage);
+  const maxW     = Math.min(window.innerWidth - 80, 800);
+  const vp0      = page.getViewport({ scale: 1 });
+  viewScale      = Math.min(maxW / vp0.width, 1.5);
+  const viewport = page.getViewport({ scale: viewScale });
+
+  viewerCanvas.width  = redactCanvas.width  = viewport.width;
+  viewerCanvas.height = redactCanvas.height = viewport.height;
+  redactCanvas.style.width  = viewerCanvas.style.width  = viewport.width  + 'px';
+  redactCanvas.style.height = viewerCanvas.style.height = viewport.height + 'px';
+
+  await page.render({ canvasContext: vCtx, viewport }).promise;
+  drawAllRedactions();
+  updateNav();
+  updateCount();
+}
+
+function drawAllRedactions() {
+  rCtx.clearRect(0, 0, redactCanvas.width, redactCanvas.height);
+  (redactions[currentPage] || []).forEach(r => {
+    rCtx.fillStyle = r.color;
+    rCtx.fillRect(r.x, r.y, r.w, r.h);
+  });
+}
+
+function updateNav() {
+  document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
+  document.getElementById('prevPage').disabled = currentPage <= 1;
+  document.getElementById('nextPage').disabled = currentPage >= totalPages;
+}
+
+function updateCount() {
+  const total = Object.values(redactions).reduce((s, a) => s + a.length, 0);
+  document.getElementById('redactCount').textContent = `${total} redaction${total !== 1 ? 's' : ''}`;
+}
+
+function changePage(delta) {
+  currentPage = Math.max(1, Math.min(totalPages, currentPage + delta));
+  renderPage();
+}
+
+// Drawing
+function getCanvasPos(e) {
+  const rect   = redactCanvas.getBoundingClientRect();
+  const scaleX = redactCanvas.width  / rect.width;
+  const scaleY = redactCanvas.height / rect.height;
+  const src    = e.touches ? e.touches[0] : e;
+  return [(src.clientX - rect.left) * scaleX, (src.clientY - rect.top) * scaleY];
+}
+
+redactCanvas.addEventListener('mousedown', e => {
+  if (currentTool !== 'redact') return;
+  isDrawing = true;
+  [startX, startY] = getCanvasPos(e);
+});
+
+redactCanvas.addEventListener('mousemove', e => {
+  if (!isDrawing) return;
+  const [cx, cy] = getCanvasPos(e);
+  drawAllRedactions();
+  rCtx.fillStyle = redactColor;
+  rCtx.globalAlpha = 0.7;
+  rCtx.fillRect(startX, startY, cx - startX, cy - startY);
+  rCtx.globalAlpha = 1;
+});
+
+redactCanvas.addEventListener('mouseup', e => {
+  if (!isDrawing) return;
+  isDrawing = false;
+  const [cx, cy] = getCanvasPos(e);
+  const w = cx - startX, h = cy - startY;
+  if (Math.abs(w) < 5 || Math.abs(h) < 5) { drawAllRedactions(); return; }
+  if (!redactions[currentPage]) redactions[currentPage] = [];
+  redactions[currentPage].push({ x: startX, y: startY, w, h, color: redactColor });
+  drawAllRedactions();
+  updateCount();
+});
+
+redactCanvas.addEventListener('mouseleave', () => {
+  if (isDrawing) { isDrawing = false; drawAllRedactions(); }
+});
+
+// Touch support
+redactCanvas.addEventListener('touchstart', e => { e.preventDefault(); isDrawing = true; [startX, startY] = getCanvasPos(e); });
+redactCanvas.addEventListener('touchmove',  e => { e.preventDefault(); const [cx,cy]=getCanvasPos(e); drawAllRedactions(); rCtx.fillStyle=redactColor; rCtx.globalAlpha=.7; rCtx.fillRect(startX,startY,cx-startX,cy-startY); rCtx.globalAlpha=1; });
+redactCanvas.addEventListener('touchend',   e => { e.preventDefault(); const t=e.changedTouches[0]; const cx=(t.clientX-redactCanvas.getBoundingClientRect().left)*(redactCanvas.width/redactCanvas.getBoundingClientRect().width); const cy=(t.clientY-redactCanvas.getBoundingClientRect().top)*(redactCanvas.height/redactCanvas.getBoundingClientRect().height); const w=cx-startX,h=cy-startY; if(Math.abs(w)>5&&Math.abs(h)>5){if(!redactions[currentPage])redactions[currentPage]=[];redactions[currentPage].push({x:startX,y:startY,w,h,color:redactColor});} isDrawing=false; drawAllRedactions(); updateCount(); });
+
+function undoLastRedaction() {
+  if (!redactions[currentPage] || redactions[currentPage].length === 0) return;
+  redactions[currentPage].pop();
+  drawAllRedactions();
+  updateCount();
+  // Reset tool toggle back to redact
+  setTool('redact', document.getElementById('toolRedact'));
+}
+
+function clearAllRedactions() {
+  redactions = {};
+  drawAllRedactions();
+  updateCount();
+}
+
+applyBtn.addEventListener('click', async () => {
+  const totalR = Object.values(redactions).reduce((s, a) => s + a.length, 0);
+  if (totalR === 0) { showError('Please draw at least one redaction box.'); return; }
+  clearError();
+  applyBtn.disabled = true;
+  progressWrap.style.display = 'block';
+  resultBox.classList.remove('visible');
+
+  try {
+    setProgress(20, 'Loading PDF...');
+    const buf    = await readFileAsArrayBuffer(pdfFile);
+    const pdfDoc = await PDFDocument.load(buf, { ignoreEncryption: true });
+    const pages  = pdfDoc.getPages();
+
+    setProgress(50, 'Applying redactions...');
+
+    for (const [pageNumStr, rects] of Object.entries(redactions)) {
+      const pageNum = parseInt(pageNumStr);
+      const page    = pages[pageNum - 1];
+      if (!page) continue;
+      const { width: pw, height: ph } = page.getSize();
+
+      // Get page rendered size
+      const pjsPage  = await pdfJsDoc.getPage(pageNum);
+      const vp0      = pjsPage.getViewport({ scale: 1 });
+      const scaleX   = pw / (vp0.width  * viewScale);
+      const scaleY   = ph / (vp0.height * viewScale);
+
+      rects.forEach(r => {
+        const x  = r.x * scaleX;
+        const y  = ph - (r.y + r.h) * scaleY;
+        const w  = Math.abs(r.w) * scaleX;
+        const h  = Math.abs(r.h) * scaleY;
+
+        // Parse hex color to rgb 0-1
+        const hex = r.color.replace('#','');
+        const rv  = parseInt(hex.slice(0,2),16)/255;
+        const gv  = parseInt(hex.slice(2,4),16)/255;
+        const bv  = parseInt(hex.slice(4,6),16)/255;
+
+        page.drawRectangle({ x, y: r.h < 0 ? y + h : y, width: w, height: h, color: rgb(rv, gv, bv), borderWidth: 0 });
+      });
+    }
+
+    setProgress(90, 'Saving...');
+    const pdfBytes = await pdfDoc.save();
+    setProgress(100, 'Done!');
+
+    const pageCount = Object.keys(redactions).length;
+    resultDesc.textContent = `${totalR} redaction${totalR !== 1 ? 's' : ''} applied across ${pageCount} page${pageCount !== 1 ? 's' : ''}.`;
+    downloadBtn.onclick = () => downloadFile(pdfBytes, 'redacted_' + pdfFile.name);
+    resultBox.classList.add('visible');
+
+  } catch (err) {
+    showError('Redaction failed: ' + err.message);
+  } finally {
+    applyBtn.disabled = false;
+    progressWrap.style.display = 'none';
+  }
+});
+
+function resetTool() {
+  pdfFile = null; pdfJsDoc = null; totalPages = 0; currentPage = 1; redactions = {};
+  vCtx.clearRect(0, 0, viewerCanvas.width, viewerCanvas.height);
+  rCtx.clearRect(0, 0, redactCanvas.width, redactCanvas.height);
+  toolOpts.style.display = 'none';
+  resultBox.classList.remove('visible');
+  clearError();
+}
+</script>
+</body>
+</html>

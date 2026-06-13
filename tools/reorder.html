@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reorder PDF Pages — PDFQuick</title>
+  <meta name="description" content="Drag and drop to reorder PDF pages online for free. Rearrange, delete, or duplicate pages. No signup needed."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    .pages-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 12px; margin-top: 16px;
+    }
+    .page-card {
+      border: 2px solid var(--border); border-radius: var(--radius-md);
+      background: var(--white); cursor: grab; position: relative;
+      transition: box-shadow .15s, transform .15s, border-color .15s;
+      user-select: none;
+    }
+    .page-card:hover { border-color: #94a3b8; box-shadow: var(--shadow-sm); }
+    .page-card.dragging { opacity: .4; transform: scale(.95); border-color: var(--red); }
+    .page-card.drag-over { border-color: var(--red); box-shadow: 0 0 0 3px rgba(230,57,70,.15); transform: scale(1.02); }
+    .page-card canvas { width: 100%; height: auto; display: block; border-radius: 4px 4px 0 0; pointer-events: none; }
+    .page-card-footer {
+      padding: 7px 8px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 4px;
+    }
+    .page-num { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+    .page-orig { font-size: 10px; color: var(--text-muted); }
+    .page-actions { display: flex; gap: 2px; }
+    .pg-btn {
+      width: 24px; height: 24px; border-radius: 4px; border: none;
+      background: transparent; cursor: pointer; font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s; color: var(--text-muted);
+    }
+    .pg-btn:hover { background: var(--bg); }
+    .pg-btn.delete:hover { background: var(--red-light); color: var(--red); }
+    .pg-btn.dup:hover { background: var(--blue-light); color: var(--blue); }
+    .drag-badge {
+      position: absolute; top: 6px; left: 6px;
+      background: rgba(0,0,0,.45); color: white;
+      border-radius: 4px; font-size: 10px; font-weight: 600;
+      padding: 2px 6px; pointer-events: none;
+    }
+    .toolbar {
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+      padding: 12px 0; border-bottom: 1px solid var(--border); margin-bottom: 4px;
+    }
+    .toolbar-btn {
+      font-size: 13px; font-weight: 500; padding: 7px 14px;
+      border-radius: var(--radius-sm); border: 1px solid var(--border);
+      background: var(--white); cursor: pointer; transition: all .15s;
+      color: var(--text-secondary);
+    }
+    .toolbar-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-light); }
+    .toolbar-sep { width: 1px; height: 28px; background: var(--border); }
+    .page-count-label { font-size: 13px; color: var(--text-muted); margin-left: auto; }
+    .empty-drop {
+      border: 2px dashed var(--border); border-radius: var(--radius-md);
+      padding: 24px; text-align: center; font-size: 13px; color: var(--text-muted);
+      margin-top: 12px; display: none;
+    }
+    .undo-toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: var(--text-primary); color: white; font-size: 13px;
+      padding: 10px 20px; border-radius: var(--radius-md); display: none;
+      align-items: center; gap: 12px; z-index: 999; box-shadow: var(--shadow-lg);
+    }
+    .undo-toast button {
+      background: none; border: none; color: #93c5fd; cursor: pointer;
+      font-size: 13px; font-weight: 600; padding: 0;
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="container header-inner">
+    <a href="../index.html" class="logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="8" fill="#E63946"/>
+        <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
+        <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
+      </svg>
+      PDFQuick
+    </a>
+  </div>
+</header>
+
+<section class="tool-page-hero">
+  <div class="container">
+    <a href="../index.html" class="back-link">← All tools</a>
+    <h1>Reorder PDF Pages</h1>
+    <p>Drag and drop pages to rearrange them. Delete, duplicate, or reverse page order.</p>
+  </div>
+</section>
+
+<section class="tool-page-body">
+  <div class="container">
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept=".pdf"/>
+      <div class="dropzone-icon">📑</div>
+      <h3>Drop your PDF here</h3>
+      <p>See all pages as thumbnails — drag to reorder</p>
+      <button class="btn-upload" onclick="event.stopPropagation();document.getElementById('fileInput').click()">Choose PDF</button>
+    </div>
+
+    <div id="toolOptions" style="display:none">
+      <div class="toolbar">
+        <button class="toolbar-btn" onclick="reverseAll()">↕ Reverse order</button>
+        <button class="toolbar-btn" onclick="sortOriginal()">↺ Reset order</button>
+        <div class="toolbar-sep"></div>
+        <button class="toolbar-btn" onclick="deleteSelected()" id="deleteSelBtn" style="display:none">🗑 Delete selected</button>
+        <span class="page-count-label" id="pageCountLbl"></span>
+      </div>
+
+      <div class="pages-grid" id="pagesGrid"></div>
+      <div class="empty-drop" id="emptyDrop">All pages deleted — add more or reset.</div>
+
+      <div class="action-bar" style="margin-top:20px;">
+        <button class="btn-action" id="applyBtn">✅ Save reordered PDF</button>
+        <div class="progress-wrap" id="progressWrap" style="display:none">
+          <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+          <div class="progress-label">Building PDF...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="result-box" id="resultBox">
+      <h3>✅ PDF reordered!</h3>
+      <p id="resultDesc"></p>
+      <button class="btn-download" id="downloadBtn">⬇ Download PDF</button>
+      <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Reorder another</button>
+    </div>
+
+    <!-- Undo toast -->
+    <div class="undo-toast" id="undoToast">
+      <span id="undoMsg">Page deleted</span>
+      <button onclick="undoLast()">Undo</button>
+    </div>
+
+    <div class="how-to">
+      <h2>How to reorder PDF pages</h2>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><h4>Upload PDF</h4><p>Drop or choose your PDF file.</p></div>
+        <div class="step"><div class="step-num">2</div><h4>Drag to reorder</h4><p>Drag page thumbnails to change the order.</p></div>
+        <div class="step"><div class="step-num">3</div><h4>Delete or duplicate</h4><p>Use the buttons on each page thumbnail.</p></div>
+        <div class="step"><div class="step-num">4</div><h4>Download</h4><p>Save the reordered PDF with one click.</p></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <span class="logo-small">PDFQuick</span>
+    <p>Free PDF tools for everyone.</p>
+  </div>
+</footer>
+
+<script src="../js/utils.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const { PDFDocument } = PDFLib;
+
+let pdfFile    = null;
+let pdfJsDoc   = null;
+let pageOrder  = []; // Array of { origIndex, canvas }
+let undoStack  = [];
+let dragSrcIdx = null;
+let undoTimer  = null;
+
+const dropzone   = document.getElementById('dropzone');
+const fileInput  = document.getElementById('fileInput');
+const toolOpts   = document.getElementById('toolOptions');
+const pagesGrid  = document.getElementById('pagesGrid');
+const applyBtn   = document.getElementById('applyBtn');
+const progressWrap = document.getElementById('progressWrap');
+const resultBox  = document.getElementById('resultBox');
+const resultDesc = document.getElementById('resultDesc');
+const downloadBtn= document.getElementById('downloadBtn');
+const undoToast  = document.getElementById('undoToast');
+
+setupDropzone(dropzone, f => handleFile(f[0]));
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+async function handleFile(file) {
+  if (!file.name.endsWith('.pdf') && file.type !== 'application/pdf') { showError('Please upload a PDF.'); return; }
+  pdfFile = file;
+  clearError();
+  resultBox.classList.remove('visible');
+  pageOrder = [];
+
+  const buf  = await readFileAsArrayBuffer(file);
+  pdfJsDoc   = await pdfjsLib.getDocument({ data: buf }).promise;
+  const total = pdfJsDoc.numPages;
+
+  // Render all thumbnails
+  for (let i = 1; i <= total; i++) {
+    const page     = await pdfJsDoc.getPage(i);
+    const viewport = page.getViewport({ scale: 0.55 });
+    const canvas   = document.createElement('canvas');
+    canvas.width   = viewport.width;
+    canvas.height  = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    pageOrder.push({ origIndex: i - 1, canvas });
+  }
+
+  renderGrid();
+  toolOpts.style.display = 'block';
+}
+
+function renderGrid() {
+  pagesGrid.innerHTML = '';
+  document.getElementById('emptyDrop').style.display = pageOrder.length === 0 ? 'block' : 'none';
+  document.getElementById('pageCountLbl').textContent = `${pageOrder.length} page${pageOrder.length !== 1 ? 's' : ''}`;
+
+  pageOrder.forEach((pg, i) => {
+    const card = document.createElement('div');
+    card.className = 'page-card';
+    card.draggable = true;
+    card.dataset.idx = i;
+
+    const badge = document.createElement('div');
+    badge.className = 'drag-badge';
+    badge.textContent = `${i + 1}`;
+
+    const canvasClone = pg.canvas.cloneNode(true);
+
+    const footer = document.createElement('div');
+    footer.className = 'page-card-footer';
+
+    const numEl = document.createElement('span');
+    numEl.className = 'page-num';
+    numEl.textContent = `Slide ${i + 1}`;
+
+    const origEl = document.createElement('span');
+    origEl.className = 'page-orig';
+    origEl.textContent = `orig. ${pg.origIndex + 1}`;
+
+    const actions = document.createElement('div');
+    actions.className = 'page-actions';
+
+    const dupBtn = document.createElement('button');
+    dupBtn.className = 'pg-btn dup';
+    dupBtn.title = 'Duplicate page';
+    dupBtn.textContent = '⧉';
+    dupBtn.onclick = e => { e.stopPropagation(); duplicatePage(i); };
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'pg-btn delete';
+    delBtn.title = 'Delete page';
+    delBtn.textContent = '✕';
+    delBtn.onclick = e => { e.stopPropagation(); deletePage(i); };
+
+    actions.appendChild(dupBtn);
+    actions.appendChild(delBtn);
+    footer.appendChild(numEl);
+    footer.appendChild(origEl);
+    footer.appendChild(actions);
+
+    card.appendChild(badge);
+    card.appendChild(canvasClone);
+    card.appendChild(footer);
+
+    // Drag events
+    card.addEventListener('dragstart', e => {
+      dragSrcIdx = i;
+      setTimeout(() => card.classList.add('dragging'), 0);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      pagesGrid.querySelectorAll('.page-card').forEach(c => c.classList.remove('drag-over'));
+    });
+    card.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      pagesGrid.querySelectorAll('.page-card').forEach(c => c.classList.remove('drag-over'));
+      card.classList.add('drag-over');
+    });
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      if (dragSrcIdx === null || dragSrcIdx === i) return;
+      pushUndo();
+      const [moved] = pageOrder.splice(dragSrcIdx, 1);
+      pageOrder.splice(i, 0, moved);
+      dragSrcIdx = null;
+      renderGrid();
+    });
+
+    pagesGrid.appendChild(card);
+  });
+}
+
+function deletePage(idx) {
+  pushUndo();
+  const removed = pageOrder.splice(idx, 1);
+  renderGrid();
+  showToast(`Page ${idx + 1} deleted`);
+}
+
+function duplicatePage(idx) {
+  pushUndo();
+  const copy = { ...pageOrder[idx], canvas: pageOrder[idx].canvas.cloneNode(true) };
+  pageOrder.splice(idx + 1, 0, copy);
+  renderGrid();
+}
+
+function reverseAll() {
+  pushUndo();
+  pageOrder.reverse();
+  renderGrid();
+}
+
+function sortOriginal() {
+  pushUndo();
+  pageOrder.sort((a, b) => a.origIndex - b.origIndex);
+  renderGrid();
+}
+
+function pushUndo() {
+  undoStack.push(pageOrder.map(p => ({ ...p })));
+  if (undoStack.length > 20) undoStack.shift();
+}
+
+function undoLast() {
+  if (!undoStack.length) return;
+  pageOrder = undoStack.pop();
+  renderGrid();
+  hideToast();
+}
+
+function showToast(msg) {
+  document.getElementById('undoMsg').textContent = msg;
+  undoToast.style.display = 'flex';
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(hideToast, 4000);
+}
+
+function hideToast() {
+  undoToast.style.display = 'none';
+}
+
+applyBtn.addEventListener('click', async () => {
+  if (!pdfFile || pageOrder.length === 0) { showError('No pages to save.'); return; }
+  clearError();
+  applyBtn.disabled = true;
+  progressWrap.style.display = 'block';
+  resultBox.classList.remove('visible');
+
+  try {
+    setProgress(20, 'Loading PDF...');
+    const buf     = await readFileAsArrayBuffer(pdfFile);
+    const srcDoc  = await PDFDocument.load(buf, { ignoreEncryption: true });
+    const newDoc  = await PDFDocument.create();
+
+    setProgress(50, 'Reordering pages...');
+    const indices = pageOrder.map(p => p.origIndex);
+    const copied  = await newDoc.copyPages(srcDoc, indices);
+    copied.forEach(page => newDoc.addPage(page));
+
+    setProgress(90, 'Saving...');
+    const pdfBytes = await newDoc.save();
+    setProgress(100, 'Done!');
+
+    const origCount = (await PDFDocument.load(buf)).getPageCount();
+    resultDesc.textContent = `PDF saved with ${pageOrder.length} page${pageOrder.length !== 1 ? 's' : ''} in new order${pageOrder.length !== origCount ? ` (${origCount - pageOrder.length} page${origCount - pageOrder.length !== 1 ? 's' : ''} removed)` : ''}.`;
+    downloadBtn.onclick = () => downloadFile(pdfBytes, 'reordered_' + pdfFile.name);
+    resultBox.classList.add('visible');
+
+  } catch (err) {
+    showError('Failed: ' + err.message);
+  } finally {
+    applyBtn.disabled = false;
+    progressWrap.style.display = 'none';
+  }
+});
+
+function resetTool() {
+  pdfFile = null; pdfJsDoc = null; pageOrder = []; undoStack = [];
+  pagesGrid.innerHTML = '';
+  toolOpts.style.display = 'none';
+  resultBox.classList.remove('visible');
+  clearError(); hideToast();
+}
+</script>
+</body>
+</html>

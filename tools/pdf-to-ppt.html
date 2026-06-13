@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PDF to PowerPoint — PDFQuick</title>
+  <meta name="description" content="Convert PDF to PowerPoint (.pptx) online for free. Each PDF page becomes a slide. No signup needed."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    .slide-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px; margin-top: 16px;
+    }
+    .slide-card {
+      border: 1px solid var(--border); border-radius: var(--radius-md);
+      overflow: hidden; background: var(--white);
+    }
+    .slide-card canvas { width: 100%; height: auto; display: block; background: #f8fafc; }
+    .slide-card-label {
+      font-size: 11px; color: var(--text-secondary); padding: 6px 10px;
+      border-top: 1px solid var(--border); text-align: center;
+    }
+    .info-banner {
+      background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md);
+      padding: 14px 16px; font-size: 13px; color: #1e40af;
+      margin-bottom: 20px; display: flex; gap: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="container header-inner">
+    <a href="../index.html" class="logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="8" fill="#E63946"/>
+        <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
+        <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
+      </svg>
+      PDFQuick
+    </a>
+  </div>
+</header>
+
+<section class="tool-page-hero">
+  <div class="container">
+    <a href="../index.html" class="back-link">← All tools</a>
+    <h1>PDF to PowerPoint</h1>
+    <p>Convert each PDF page into a PowerPoint slide. Download a ready-to-edit .pptx file.</p>
+  </div>
+</section>
+
+<section class="tool-page-body">
+  <div class="container">
+
+    <div class="info-banner">
+      <span>ℹ️</span>
+      <div><strong>How it works:</strong> Each PDF page is rendered as a high-quality image and placed on its own PowerPoint slide. The result is a .pptx file you can open in Microsoft PowerPoint or Google Slides.</div>
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept=".pdf"/>
+      <div class="dropzone-icon">📊</div>
+      <h3>Drop your PDF here</h3>
+      <p>Each page becomes one PowerPoint slide</p>
+      <button class="btn-upload" onclick="event.stopPropagation();document.getElementById('fileInput').click()">Choose PDF</button>
+    </div>
+
+    <div id="toolOptions" style="display:none">
+      <div class="options-panel" style="margin-top:20px;">
+        <h3>Slide settings</h3>
+        <div class="option-row">
+          <span class="option-label">Slide size</span>
+          <select class="option-select" id="slideSize">
+            <option value="widescreen" selected>Widescreen 16:9 (default)</option>
+            <option value="standard">Standard 4:3</option>
+            <option value="a4">A4 Portrait</option>
+          </select>
+        </div>
+        <div class="option-row">
+          <span class="option-label">Image quality</span>
+          <select class="option-select" id="imgQuality">
+            <option value="1.5">Standard (fast)</option>
+            <option value="2" selected>High (recommended)</option>
+            <option value="3">Very high (slow)</option>
+          </select>
+        </div>
+        <div class="option-row">
+          <span class="option-label">Page range</span>
+          <select class="option-select" id="pageRange" onchange="toggleRange(this)">
+            <option value="all">All pages</option>
+            <option value="custom">Custom range</option>
+          </select>
+          <input type="text" id="customRange" placeholder="e.g. 1-5, 7, 9-12"
+            style="display:none; font-size:14px; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg); outline:none; width:200px;"/>
+        </div>
+      </div>
+
+      <!-- Slide preview -->
+      <div style="margin-top:20px;">
+        <div style="font-size:13px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px;">
+          Slide preview — <span id="pageCountLabel"></span>
+        </div>
+        <div class="slide-preview-grid" id="slideGrid"></div>
+      </div>
+
+      <div class="action-bar" style="margin-top:20px;">
+        <button class="btn-action" id="convertBtn">📊 Convert to PowerPoint</button>
+        <div class="progress-wrap" id="progressWrap" style="display:none">
+          <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+          <div class="progress-label" id="progressLabel">Rendering slides...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="result-box" id="resultBox">
+      <h3>✅ PowerPoint ready!</h3>
+      <p id="resultDesc"></p>
+      <button class="btn-download" id="downloadBtn">⬇ Download .pptx</button>
+      <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Convert another</button>
+    </div>
+
+    <div class="how-to">
+      <h2>How to convert PDF to PowerPoint</h2>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><h4>Upload PDF</h4><p>Choose the PDF you want to convert to slides.</p></div>
+        <div class="step"><div class="step-num">2</div><h4>Preview slides</h4><p>See thumbnails of each slide before converting.</p></div>
+        <div class="step"><div class="step-num">3</div><h4>Convert</h4><p>Each page becomes one PowerPoint slide image.</p></div>
+        <div class="step"><div class="step-num">4</div><h4>Download .pptx</h4><p>Open in PowerPoint or Google Slides to edit.</p></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <span class="logo-small">PDFQuick</span>
+    <p>Free PDF tools for everyone.</p>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
+<script src="../js/utils.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let pdfFile = null;
+let pdfJsDoc = null;
+let totalPages = 0;
+let slideCanvases = [];
+
+const dropzone    = document.getElementById('dropzone');
+const fileInput   = document.getElementById('fileInput');
+const toolOptions = document.getElementById('toolOptions');
+const slideGrid   = document.getElementById('slideGrid');
+const convertBtn  = document.getElementById('convertBtn');
+const progressWrap= document.getElementById('progressWrap');
+const resultBox   = document.getElementById('resultBox');
+const resultDesc  = document.getElementById('resultDesc');
+const downloadBtn = document.getElementById('downloadBtn');
+
+function toggleRange(sel) {
+  document.getElementById('customRange').style.display = sel.value === 'custom' ? 'inline-block' : 'none';
+}
+
+setupDropzone(dropzone, f => handleFile(f[0]));
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+async function handleFile(file) {
+  if (!file.name.endsWith('.pdf') && file.type !== 'application/pdf') { showError('Please upload a PDF.'); return; }
+  pdfFile = file;
+  clearError();
+  resultBox.classList.remove('visible');
+  slideCanvases = [];
+
+  const buf = await readFileAsArrayBuffer(file);
+  pdfJsDoc  = await pdfjsLib.getDocument({ data: buf }).promise;
+  totalPages = pdfJsDoc.numPages;
+  document.getElementById('pageCountLabel').textContent = `${totalPages} slides`;
+  await renderPreviews();
+  toolOptions.style.display = 'block';
+}
+
+async function renderPreviews() {
+  slideGrid.innerHTML = '';
+  slideCanvases = [];
+  const limit = Math.min(totalPages, 12);
+  for (let i = 1; i <= limit; i++) {
+    const page     = await pdfJsDoc.getPage(i);
+    const viewport = page.getViewport({ scale: 0.5 });
+    const canvas   = document.createElement('canvas');
+    canvas.width   = viewport.width;
+    canvas.height  = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    slideCanvases[i] = canvas;
+    const card = document.createElement('div');
+    card.className = 'slide-card';
+    const lbl = document.createElement('div');
+    lbl.className = 'slide-card-label';
+    lbl.textContent = `Slide ${i}`;
+    card.appendChild(canvas.cloneNode(true));
+    card.appendChild(lbl);
+    slideGrid.appendChild(card);
+  }
+  if (totalPages > 12) {
+    const more = document.createElement('div');
+    more.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text-muted);padding:20px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--white)';
+    more.textContent = `+ ${totalPages - 12} more slides`;
+    slideGrid.appendChild(more);
+  }
+}
+
+function getPageList() {
+  if (document.getElementById('pageRange').value === 'custom') {
+    const str = document.getElementById('customRange').value.trim();
+    const pages = new Set();
+    str.split(',').forEach(part => {
+      part = part.trim();
+      if (part.includes('-')) {
+        const [a,b] = part.split('-').map(Number);
+        for (let i = Math.max(1,a); i <= Math.min(totalPages,b); i++) pages.add(i);
+      } else {
+        const n = parseInt(part);
+        if (n >= 1 && n <= totalPages) pages.add(n);
+      }
+    });
+    return [...pages].sort((a,b) => a-b);
+  }
+  return Array.from({ length: totalPages }, (_, i) => i + 1);
+}
+
+convertBtn.addEventListener('click', async () => {
+  if (!pdfFile) return;
+  clearError();
+  convertBtn.disabled = true;
+  progressWrap.style.display = 'block';
+  resultBox.classList.remove('visible');
+
+  try {
+    const scale     = parseFloat(document.getElementById('imgQuality').value);
+    const sizeKey   = document.getElementById('slideSize').value;
+    const pageList  = getPageList();
+
+    // Slide dimensions (inches)
+    const sizemap = {
+      widescreen: { w: 13.33, h: 7.5 },
+      standard:   { w: 10,    h: 7.5 },
+      a4:         { w: 7.5,   h: 10.61 },
+    };
+    const { w: slideW, h: slideH } = sizemap[sizeKey] || sizemap.widescreen;
+
+    const prs = new PptxGenJS();
+    prs.layout = sizeKey === 'widescreen' ? 'LAYOUT_WIDE' : 'LAYOUT_4x3';
+    prs.defineLayout({ name: 'CUSTOM', width: slideW, height: slideH });
+    prs.layout = 'CUSTOM';
+
+    for (let idx = 0; idx < pageList.length; idx++) {
+      const pageNum = pageList[idx];
+      const pct = Math.round((idx / pageList.length) * 90);
+      setProgress(pct, `Rendering slide ${idx + 1} of ${pageList.length}...`);
+      document.getElementById('progressLabel').textContent = `Rendering slide ${idx+1} of ${pageList.length}...`;
+
+      // Render page at high resolution
+      const page     = await pdfJsDoc.getPage(pageNum);
+      const vp0      = page.getViewport({ scale: 1 });
+      // Keep aspect ratio, fit to slide
+      const pageAspect = vp0.width / vp0.height;
+      const slideAspect= slideW / slideH;
+      let drawW = slideW, drawH = slideH, offX = 0, offY = 0;
+      if (pageAspect > slideAspect) {
+        drawH = slideW / pageAspect;
+        offY  = (slideH - drawH) / 2;
+      } else {
+        drawW = slideH * pageAspect;
+        offX  = (slideW - drawW) / 2;
+      }
+
+      const viewport = page.getViewport({ scale });
+      const canvas   = document.createElement('canvas');
+      canvas.width   = viewport.width;
+      canvas.height  = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+      const slide = prs.addSlide();
+      // White background
+      slide.background = { color: 'FFFFFF' };
+      slide.addImage({
+        data: imgData,
+        x: offX, y: offY,
+        w: drawW, h: drawH,
+      });
+    }
+
+    setProgress(95, 'Building .pptx file...');
+    const baseName = pdfFile.name.replace('.pdf','');
+    await prs.writeFile({ fileName: `${baseName}.pptx` });
+    setProgress(100, 'Done!');
+
+    resultDesc.textContent = `${pageList.length} slide${pageList.length > 1 ? 's' : ''} created. Open with Microsoft PowerPoint or Google Slides.`;
+    // pptxgenjs writes the file directly via browser download
+    downloadBtn.onclick = async () => {
+      await prs.writeFile({ fileName: `${baseName}.pptx` });
+    };
+    resultBox.classList.add('visible');
+
+  } catch (err) {
+    showError('Conversion failed: ' + err.message);
+  } finally {
+    convertBtn.disabled = false;
+    progressWrap.style.display = 'none';
+  }
+});
+
+function resetTool() {
+  pdfFile = null; pdfJsDoc = null; totalPages = 0; slideCanvases = [];
+  slideGrid.innerHTML = '';
+  toolOptions.style.display = 'none';
+  resultBox.classList.remove('visible');
+  clearError();
+}
+</script>
+</body>
+</html>
