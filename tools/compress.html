@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Compress PDF — PDFQuick</title>
+  <meta name="description" content="Compress PDF files online for free. Reduce size without losing quality. No signup required."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <!-- pdf-lib from CDN -->
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+
+  <header class="header">
+    <div class="container header-inner">
+      <a href="../index.html" class="logo">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" rx="8" fill="#E63946"/>
+          <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
+          <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
+        </svg>
+        PDFQuick
+      </a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="tool-page-hero">
+    <div class="container">
+      <a href="../index.html" class="back-link">← All tools</a>
+      <h1>Compress PDF</h1>
+      <p>Reduce your PDF file size. Choose your compression level — we balance quality and size for you.</p>
+    </div>
+  </section>
+
+  <!-- Body -->
+  <section class="tool-page-body">
+    <div class="container">
+
+      <!-- Drop zone -->
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept=".pdf" />
+        <div class="dropzone-icon">📄</div>
+        <h3>Drop your PDF here</h3>
+        <p>or click to browse your files</p>
+        <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
+          Choose PDF
+        </button>
+      </div>
+
+      <!-- File list -->
+      <div class="file-list" id="fileList"></div>
+
+      <!-- Options -->
+      <div class="options-panel" id="optionsPanel" style="display:none">
+        <h3>Compression settings</h3>
+        <div class="option-row">
+          <span class="option-label">Quality level</span>
+          <select class="option-select" id="quality">
+            <option value="high">High quality (mild compression)</option>
+            <option value="medium" selected>Balanced (recommended)</option>
+            <option value="low">Small file (more compression)</option>
+          </select>
+        </div>
+        <div class="option-row">
+          <span class="option-label">Remove metadata</span>
+          <select class="option-select" id="metadata">
+            <option value="yes">Yes — strip author, dates, etc.</option>
+            <option value="no">No — keep metadata</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Action -->
+      <div class="action-bar" id="actionBar" style="display:none">
+        <button class="btn-action" id="compressBtn">
+          ⚡ Compress PDF
+        </button>
+        <div class="progress-wrap" id="progressWrap" style="display:none">
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-label" id="progressLabel">Processing...</div>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div class="error-box" id="errorBox"></div>
+
+      <!-- Result -->
+      <div class="result-box" id="resultBox">
+        <h3>✅ Compression complete!</h3>
+        <p id="resultDesc"></p>
+        <button class="btn-download" id="downloadBtn">⬇ Download compressed PDF</button>
+        <button class="btn-upload" style="margin-left:12px; margin-top:0; background:#fff; color:#E63946; border:1px solid #E63946;" onclick="resetTool()">Compress another</button>
+      </div>
+
+      <!-- How to -->
+      <div class="how-to">
+        <h2>How to compress a PDF</h2>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><h4>Upload your PDF</h4><p>Drag and drop or click to browse your files.</p></div>
+          <div class="step"><div class="step-num">2</div><h4>Choose quality</h4><p>Pick how much compression you want applied.</p></div>
+          <div class="step"><div class="step-num">3</div><h4>Compress</h4><p>Click the button and we process it instantly.</p></div>
+          <div class="step"><div class="step-num">4</div><h4>Download</h4><p>Get your smaller PDF file immediately.</p></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span class="logo-small">PDFQuick</span>
+      <p>Free PDF tools for everyone.</p>
+    </div>
+  </footer>
+
+  <script src="../js/utils.js"></script>
+  <script>
+    const { PDFDocument } = PDFLib;
+    let selectedFile = null;
+    let compressedBytes = null;
+
+    const dropzone    = document.getElementById('dropzone');
+    const fileInput   = document.getElementById('fileInput');
+    const fileList    = document.getElementById('fileList');
+    const optionsPanel= document.getElementById('optionsPanel');
+    const actionBar   = document.getElementById('actionBar');
+    const progressWrap= document.getElementById('progressWrap');
+    const compressBtn = document.getElementById('compressBtn');
+    const resultBox   = document.getElementById('resultBox');
+    const resultDesc  = document.getElementById('resultDesc');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const errorBox    = document.getElementById('errorBox');
+
+    // Setup drag-and-drop
+    setupDropzone(dropzone, files => handleFiles(files));
+
+    fileInput.addEventListener('change', e => {
+      if (e.target.files.length) handleFiles(Array.from(e.target.files));
+    });
+
+    function handleFiles(files) {
+      const pdf = files.find(f => f.type === 'application/pdf' || f.name.endsWith('.pdf'));
+      if (!pdf) { showError('Please upload a PDF file.'); return; }
+      if (pdf.size > 50 * 1024 * 1024) { showError('File too large. Max 50MB.'); return; }
+      selectedFile = pdf;
+      clearError();
+      resultBox.classList.remove('visible');
+      compressedBytes = null;
+
+      // Render file item
+      renderFileList([selectedFile], fileList, () => {
+        selectedFile = null;
+        fileList.innerHTML = '';
+        optionsPanel.style.display = 'none';
+        actionBar.style.display = 'none';
+      });
+
+      optionsPanel.style.display = 'block';
+      actionBar.style.display    = 'flex';
+    }
+
+    compressBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+      clearError();
+      compressBtn.disabled = true;
+      progressWrap.style.display = 'block';
+      setProgress(10, 'Reading file...');
+
+      try {
+        const arrayBuffer = await readFileAsArrayBuffer(selectedFile);
+        setProgress(30, 'Parsing PDF...');
+
+        const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+        setProgress(50, 'Applying compression...');
+
+        // Remove metadata if requested
+        if (document.getElementById('metadata').value === 'yes') {
+          pdfDoc.setTitle('');
+          pdfDoc.setAuthor('');
+          pdfDoc.setSubject('');
+          pdfDoc.setKeywords([]);
+          pdfDoc.setProducer('PDFQuick');
+          pdfDoc.setCreator('PDFQuick');
+        }
+
+        setProgress(70, 'Saving...');
+
+        // Quality → object streams on/off
+        const quality = document.getElementById('quality').value;
+        const useObjectStreams = quality !== 'high';
+
+        compressedBytes = await pdfDoc.save({ useObjectStreams });
+        setProgress(100, 'Done!');
+
+        const origSize  = formatBytes(selectedFile.size);
+        const newSize   = formatBytes(compressedBytes.length);
+        const reduction = (((selectedFile.size - compressedBytes.length) / selectedFile.size) * 100).toFixed(1);
+        const saved     = reduction > 0 ? `Reduced by ${reduction}%` : 'File already optimized';
+
+        resultDesc.textContent = `Original: ${origSize} → Compressed: ${newSize}. ${saved}.`;
+        downloadBtn.onclick = () => downloadFile(compressedBytes, 'compressed_' + selectedFile.name);
+        resultBox.classList.add('visible');
+
+      } catch (err) {
+        showError('Something went wrong: ' + err.message);
+      } finally {
+        compressBtn.disabled = false;
+        progressWrap.style.display = 'none';
+      }
+    });
+
+    function resetTool() {
+      selectedFile = null;
+      compressedBytes = null;
+      fileList.innerHTML = '';
+      optionsPanel.style.display = 'none';
+      actionBar.style.display    = 'none';
+      resultBox.classList.remove('visible');
+      clearError();
+    }
+  </script>
+</body>
+</html>

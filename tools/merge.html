@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Merge PDF — PDFQuick</title>
+  <meta name="description" content="Combine multiple PDF files into one. Free, fast, no signup needed."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+
+  <header class="header">
+    <div class="container header-inner">
+      <a href="../index.html" class="logo">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" rx="8" fill="#E63946"/>
+          <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
+          <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
+        </svg>
+        PDFQuick
+      </a>
+    </div>
+  </header>
+
+  <section class="tool-page-hero">
+    <div class="container">
+      <a href="../index.html" class="back-link">← All tools</a>
+      <h1>Merge PDF</h1>
+      <p>Combine multiple PDF files into a single document. Add files and reorder them before merging.</p>
+    </div>
+  </section>
+
+  <section class="tool-page-body">
+    <div class="container">
+
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept=".pdf" multiple/>
+        <div class="dropzone-icon">📑</div>
+        <h3>Drop PDF files here</h3>
+        <p>You can select multiple files at once</p>
+        <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
+          Choose PDFs
+        </button>
+      </div>
+
+      <div class="file-list" id="fileList"></div>
+
+      <div id="reorderHint" style="display:none; font-size:13px; color:var(--text-muted); margin-top:8px;">
+        💡 Files will be merged in the order shown above. Remove any you don't need.
+      </div>
+
+      <div class="action-bar" id="actionBar" style="display:none">
+        <button class="btn-action" id="mergeBtn">🔗 Merge PDFs</button>
+        <div class="progress-wrap" id="progressWrap" style="display:none">
+          <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+          <div class="progress-label">Processing...</div>
+        </div>
+      </div>
+
+      <div class="error-box" id="errorBox"></div>
+
+      <div class="result-box" id="resultBox">
+        <h3>✅ PDFs merged!</h3>
+        <p id="resultDesc"></p>
+        <button class="btn-download" id="downloadBtn">⬇ Download merged PDF</button>
+        <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Merge more</button>
+      </div>
+
+      <div class="how-to">
+        <h2>How to merge PDFs</h2>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><h4>Upload PDFs</h4><p>Select two or more PDF files to combine.</p></div>
+          <div class="step"><div class="step-num">2</div><h4>Check order</h4><p>Files are merged in the order they appear.</p></div>
+          <div class="step"><div class="step-num">3</div><h4>Merge</h4><p>Click Merge and we combine them instantly.</p></div>
+          <div class="step"><div class="step-num">4</div><h4>Download</h4><p>Get your single combined PDF file.</p></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span class="logo-small">PDFQuick</span>
+      <p>Free PDF tools for everyone.</p>
+    </div>
+  </footer>
+
+  <script src="../js/utils.js"></script>
+  <script>
+    const { PDFDocument } = PDFLib;
+    let files = [];
+    let mergedBytes = null;
+
+    const dropzone     = document.getElementById('dropzone');
+    const fileInput    = document.getElementById('fileInput');
+    const fileListEl   = document.getElementById('fileList');
+    const actionBar    = document.getElementById('actionBar');
+    const reorderHint  = document.getElementById('reorderHint');
+    const mergeBtn     = document.getElementById('mergeBtn');
+    const progressWrap = document.getElementById('progressWrap');
+    const resultBox    = document.getElementById('resultBox');
+    const resultDesc   = document.getElementById('resultDesc');
+    const downloadBtn  = document.getElementById('downloadBtn');
+
+    setupDropzone(dropzone, newFiles => addFiles(newFiles));
+
+    fileInput.addEventListener('change', e => {
+      if (e.target.files.length) addFiles(Array.from(e.target.files));
+    });
+
+    function addFiles(newFiles) {
+      const pdfs = newFiles.filter(f => f.type === 'application/pdf' || f.name.endsWith('.pdf'));
+      if (!pdfs.length) { showError('Please upload PDF files only.'); return; }
+      files = [...files, ...pdfs];
+      clearError();
+      renderList();
+    }
+
+    function renderList() {
+      renderFileList(files, fileListEl, i => {
+        files.splice(i, 1);
+        renderList();
+      });
+      const show = files.length > 0;
+      actionBar.style.display  = show ? 'flex' : 'none';
+      reorderHint.style.display= show ? 'block' : 'none';
+      mergeBtn.textContent     = `🔗 Merge ${files.length} PDF${files.length > 1 ? 's' : ''}`;
+    }
+
+    mergeBtn.addEventListener('click', async () => {
+      if (files.length < 2) { showError('Please add at least 2 PDF files to merge.'); return; }
+      clearError();
+      mergeBtn.disabled = true;
+      progressWrap.style.display = 'block';
+      resultBox.classList.remove('visible');
+
+      try {
+        const merged = await PDFDocument.create();
+        let totalPages = 0;
+
+        for (let i = 0; i < files.length; i++) {
+          setProgress(Math.round((i / files.length) * 80), `Processing file ${i + 1} of ${files.length}...`);
+          const buf = await readFileAsArrayBuffer(files[i]);
+          const doc = await PDFDocument.load(buf, { ignoreEncryption: true });
+          const pages = await merged.copyPages(doc, doc.getPageIndices());
+          pages.forEach(p => { merged.addPage(p); totalPages++; });
+        }
+
+        setProgress(95, 'Saving merged PDF...');
+        mergedBytes = await merged.save({ useObjectStreams: true });
+        setProgress(100, 'Done!');
+
+        const totalSize = files.reduce((s, f) => s + f.size, 0);
+        resultDesc.textContent = `${files.length} files merged into 1 PDF with ${totalPages} pages. Size: ${formatBytes(mergedBytes.length)} (was ${formatBytes(totalSize)} combined).`;
+        downloadBtn.onclick = () => downloadFile(mergedBytes, 'merged.pdf');
+        resultBox.classList.add('visible');
+
+      } catch (err) {
+        showError('Merge failed: ' + err.message);
+      } finally {
+        mergeBtn.disabled = false;
+        progressWrap.style.display = 'none';
+      }
+    });
+
+    function resetTool() {
+      files = [];
+      mergedBytes = null;
+      fileListEl.innerHTML = '';
+      actionBar.style.display   = 'none';
+      reorderHint.style.display = 'none';
+      resultBox.classList.remove('visible');
+      clearError();
+    }
+  </script>
+</body>
+</html>

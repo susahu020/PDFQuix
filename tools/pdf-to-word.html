@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PDF to Word — PDFQuick</title>
+  <meta name="description" content="Convert PDF to editable Word document (.docx) online for free. No signup needed."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    .preview-box {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 28px;
+      margin-top: 20px; max-height: 320px; overflow-y: auto;
+      font-size: 14px; line-height: 1.8; color: var(--text-primary);
+      white-space: pre-wrap; font-family: 'Georgia', serif;
+    }
+    .preview-label {
+      font-size: 12px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .06em;
+      margin-bottom: 10px; margin-top: 20px;
+    }
+    .info-banner {
+      background: #fffbeb; border: 1px solid #fde68a;
+      border-radius: var(--radius-md); padding: 14px 16px;
+      font-size: 13px; color: #92400e; margin-top: 16px;
+      display: flex; gap: 10px; align-items: flex-start;
+    }
+    .info-banner .icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="container header-inner">
+      <a href="../index.html" class="logo">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" rx="8" fill="#E63946"/>
+          <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
+          <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
+        </svg>
+        PDFQuick
+      </a>
+    </div>
+  </header>
+
+  <section class="tool-page-hero">
+    <div class="container">
+      <a href="../index.html" class="back-link">← All tools</a>
+      <h1>PDF to Word</h1>
+      <p>Extract text from your PDF and download it as an editable Word (.docx) document.</p>
+    </div>
+  </section>
+
+  <section class="tool-page-body">
+    <div class="container">
+
+      <div class="info-banner">
+        <span class="icon">ℹ️</span>
+        <div>
+          <strong>How it works:</strong> This tool extracts all text from your PDF and creates a clean Word document.
+          Complex layouts (tables, columns, images) will be preserved as text — perfect for editing the content.
+          For pixel-perfect layout preservation, a desktop app like Adobe Acrobat is required.
+        </div>
+      </div>
+
+      <div class="dropzone" style="margin-top:20px" id="dropzone">
+        <input type="file" id="fileInput" accept=".pdf"/>
+        <div class="dropzone-icon">📝</div>
+        <h3>Drop your PDF here</h3>
+        <p>Text will be extracted and saved as .docx</p>
+        <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Choose PDF</button>
+      </div>
+
+      <div id="toolOptions" style="display:none">
+        <div class="options-panel" style="margin-top:20px">
+          <h3>Extraction options</h3>
+          <div class="option-row">
+            <span class="option-label">Text layout</span>
+            <select class="option-select" id="layoutMode">
+              <option value="flow">Flow text (clean paragraphs)</option>
+              <option value="preserve">Preserve line breaks</option>
+            </select>
+          </div>
+          <div class="option-row">
+            <span class="option-label">Page separator</span>
+            <select class="option-select" id="pageSep">
+              <option value="pagebreak">Page break between pages</option>
+              <option value="line">Divider line between pages</option>
+              <option value="none">No separator</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="preview-label">Text preview (first 2 pages)</div>
+        <div class="preview-box" id="previewBox">Loading preview…</div>
+
+        <div class="action-bar" style="margin-top:20px">
+          <button class="btn-action" id="convertBtn">📝 Convert to Word</button>
+          <div class="progress-wrap" id="progressWrap" style="display:none">
+            <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+            <div class="progress-label">Extracting text...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error-box" id="errorBox"></div>
+
+      <div class="result-box" id="resultBox">
+        <h3>✅ Conversion complete!</h3>
+        <p id="resultDesc"></p>
+        <button class="btn-download" id="downloadBtn">⬇ Download Word (.docx)</button>
+        <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Convert another</button>
+      </div>
+
+      <div class="how-to">
+        <h2>How to convert PDF to Word</h2>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><h4>Upload PDF</h4><p>Choose the PDF whose text you want to edit.</p></div>
+          <div class="step"><div class="step-num">2</div><h4>Preview text</h4><p>See extracted text before converting.</p></div>
+          <div class="step"><div class="step-num">3</div><h4>Convert</h4><p>We build a clean Word document from your PDF text.</p></div>
+          <div class="step"><div class="step-num">4</div><h4>Download .docx</h4><p>Open and edit in Microsoft Word or Google Docs.</p></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span class="logo-small">PDFQuick</span>
+      <p>Free PDF tools for everyone.</p>
+    </div>
+  </footer>
+
+  <script src="../js/utils.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    let pdfFile = null;
+    let extractedPages = []; // Array of strings per page
+
+    const dropzone     = document.getElementById('dropzone');
+    const fileInput    = document.getElementById('fileInput');
+    const toolOptions  = document.getElementById('toolOptions');
+    const previewBox   = document.getElementById('previewBox');
+    const convertBtn   = document.getElementById('convertBtn');
+    const progressWrap = document.getElementById('progressWrap');
+    const resultBox    = document.getElementById('resultBox');
+    const resultDesc   = document.getElementById('resultDesc');
+    const downloadBtn  = document.getElementById('downloadBtn');
+
+    setupDropzone(dropzone, files => handleFile(files[0]));
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+    async function handleFile(file) {
+      if (!file.name.endsWith('.pdf') && file.type !== 'application/pdf') {
+        showError('Please upload a PDF file.'); return;
+      }
+      pdfFile = file;
+      clearError();
+      extractedPages = [];
+      resultBox.classList.remove('visible');
+      previewBox.textContent = 'Extracting text preview…';
+      toolOptions.style.display = 'block';
+
+      try {
+        const buf    = await readFileAsArrayBuffer(file);
+        const pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+        const total  = pdfDoc.numPages;
+
+        for (let i = 1; i <= total; i++) {
+          const page    = await pdfDoc.getPage(i);
+          const content = await page.getTextContent();
+          const text    = content.items.map(item => item.str).join(' ').trim();
+          extractedPages.push(text);
+        }
+
+        // Preview first 2 pages
+        const preview = extractedPages.slice(0,2).join('\n\n--- Page break ---\n\n');
+        previewBox.textContent = preview || '(No text found — this PDF may contain scanned images rather than real text.)';
+
+      } catch (err) {
+        showError('Could not read PDF: ' + err.message);
+        toolOptions.style.display = 'none';
+      }
+    }
+
+    convertBtn.addEventListener('click', async () => {
+      if (!pdfFile || !extractedPages.length) return;
+      clearError();
+      convertBtn.disabled = true;
+      progressWrap.style.display = 'block';
+      resultBox.classList.remove('visible');
+
+      try {
+        setProgress(20, 'Building document...');
+        const { Document, Packer, Paragraph, TextRun, PageBreak, HorizontalPositionAlign } = docx;
+        const layoutMode = document.getElementById('layoutMode').value;
+        const pageSepMode= document.getElementById('pageSep').value;
+
+        const children = [];
+
+        extractedPages.forEach((pageText, idx) => {
+          if (!pageText.trim()) return;
+
+          // Split into paragraphs
+          const lines = layoutMode === 'preserve'
+            ? pageText.split(/\n+/)
+            : pageText.split(/\s{2,}|\.\s{1,}/);
+
+          lines.forEach(line => {
+            if (line.trim()) {
+              children.push(new Paragraph({ children: [new TextRun({ text: line.trim(), size: 24 })] }));
+            }
+          });
+
+          // Page separator
+          if (idx < extractedPages.length - 1) {
+            if (pageSepMode === 'pagebreak') {
+              children.push(new Paragraph({ children: [new PageBreak()] }));
+            } else if (pageSepMode === 'line') {
+              children.push(new Paragraph({ children: [new TextRun({ text: '─────────────────────────────────────', color: 'AAAAAA', size: 20 })] }));
+            }
+          }
+        });
+
+        setProgress(60, 'Saving .docx...');
+
+        const doc = new Document({
+          sections: [{ properties: {}, children }],
+          creator: 'PDFQuick',
+          description: 'Converted from PDF by PDFQuick',
+          title: pdfFile.name.replace('.pdf',''),
+        });
+
+        const blob = await Packer.toBlob(doc);
+        setProgress(100, 'Done!');
+
+        const outName = pdfFile.name.replace('.pdf', '') + '.docx';
+        resultDesc.textContent = `${extractedPages.length} pages converted. Open with Microsoft Word or Google Docs.`;
+        downloadBtn.onclick = () => downloadFile(blob, outName, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        resultBox.classList.add('visible');
+
+      } catch (err) {
+        showError('Conversion failed: ' + err.message);
+      } finally {
+        convertBtn.disabled = false;
+        progressWrap.style.display = 'none';
+      }
+    });
+
+    function resetTool() {
+      pdfFile = null;
+      extractedPages = [];
+      previewBox.textContent = '';
+      toolOptions.style.display = 'none';
+      resultBox.classList.remove('visible');
+      clearError();
+    }
+  </script>
+</body>
+</html>

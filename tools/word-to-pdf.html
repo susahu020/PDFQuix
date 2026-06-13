@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Word to PDF — PDFQuick</title>
+  <meta name="description" content="Convert Word .docx files to PDF online for free. No signup, instant download."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    .preview-frame {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 32px 40px;
+      margin-top: 20px; max-height: 420px; overflow-y: auto;
+      font-size: 14px; line-height: 1.8; color: var(--text-primary);
+      font-family: 'Georgia', serif; box-shadow: var(--shadow-sm);
+    }
+    .preview-frame h1,h2,h3 { margin: 1em 0 .4em; font-family: 'Inter', sans-serif; }
+    .preview-frame p { margin-bottom: .8em; }
+    .preview-frame table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+    .preview-frame td, .preview-frame th { border: 1px solid #ccc; padding: 6px 10px; font-size: 13px; }
+    .preview-label {
+      font-size: 12px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: .06em;
+      margin-bottom: 10px; margin-top: 20px;
+    }
+    .info-banner {
+      background: #eff6ff; border: 1px solid #bfdbfe;
+      border-radius: var(--radius-md); padding: 14px 16px;
+      font-size: 13px; color: #1e40af; margin-top: 16px;
+      display: flex; gap: 10px; align-items: flex-start;
+    }
+    .info-banner .icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="container header-inner">
+      <a href="../index.html" class="logo">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" rx="8" fill="#E63946"/>
+          <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
+          <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
+        </svg>
+        PDFQuick
+      </a>
+    </div>
+  </header>
+
+  <section class="tool-page-hero">
+    <div class="container">
+      <a href="../index.html" class="back-link">← All tools</a>
+      <h1>Word to PDF</h1>
+      <p>Convert your Word (.docx) documents to PDF instantly — right in your browser.</p>
+    </div>
+  </section>
+
+  <section class="tool-page-body">
+    <div class="container">
+
+      <div class="info-banner">
+        <span class="icon">ℹ️</span>
+        <div>
+          <strong>100% in-browser:</strong> Your Word file is never uploaded to any server.
+          The conversion happens locally on your device. Supports headings, paragraphs, tables, and bold/italic formatting.
+        </div>
+      </div>
+
+      <div class="dropzone" style="margin-top:20px" id="dropzone">
+        <input type="file" id="fileInput" accept=".docx,.doc"/>
+        <div class="dropzone-icon">📄</div>
+        <h3>Drop your Word file here</h3>
+        <p>Supports .docx files</p>
+        <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Choose Word File</button>
+      </div>
+
+      <div id="toolOptions" style="display:none">
+        <div class="options-panel" style="margin-top:20px">
+          <h3>PDF settings</h3>
+          <div class="option-row">
+            <span class="option-label">Page size</span>
+            <select class="option-select" id="pageSize">
+              <option value="A4">A4 (210 × 297 mm)</option>
+              <option value="Letter">US Letter (8.5 × 11 in)</option>
+              <option value="A3">A3 (297 × 420 mm)</option>
+            </select>
+          </div>
+          <div class="option-row">
+            <span class="option-label">Orientation</span>
+            <select class="option-select" id="orientation">
+              <option value="portrait">Portrait</option>
+              <option value="landscape">Landscape</option>
+            </select>
+          </div>
+          <div class="option-row">
+            <span class="option-label">Margins</span>
+            <select class="option-select" id="margins">
+              <option value="normal">Normal (2.5 cm)</option>
+              <option value="narrow">Narrow (1.27 cm)</option>
+              <option value="wide">Wide (5 cm)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="preview-label">Document preview</div>
+        <div class="preview-frame" id="previewFrame">Loading preview…</div>
+
+        <div class="action-bar" style="margin-top:20px">
+          <button class="btn-action" id="convertBtn">📄 Convert to PDF</button>
+          <div class="progress-wrap" id="progressWrap" style="display:none">
+            <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+            <div class="progress-label">Building PDF...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error-box" id="errorBox"></div>
+
+      <div class="result-box" id="resultBox">
+        <h3>✅ PDF ready!</h3>
+        <p id="resultDesc"></p>
+        <button class="btn-download" id="downloadBtn">⬇ Download PDF</button>
+        <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Convert another</button>
+      </div>
+
+      <div class="how-to">
+        <h2>How to convert Word to PDF</h2>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><h4>Upload .docx</h4><p>Select your Word document from your device.</p></div>
+          <div class="step"><div class="step-num">2</div><h4>Preview</h4><p>See how your document will look in the PDF.</p></div>
+          <div class="step"><div class="step-num">3</div><h4>Convert</h4><p>Choose page size and margins, then convert.</p></div>
+          <div class="step"><div class="step-num">4</div><h4>Download</h4><p>Get your PDF file ready to share or print.</p></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span class="logo-small">PDFQuick</span>
+      <p>Free PDF tools for everyone.</p>
+    </div>
+  </footer>
+
+  <!-- mammoth: docx → HTML; pdf-lib: HTML → PDF layout -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="../js/utils.js"></script>
+  <script>
+    const { PDFDocument, rgb, StandardFonts, PageSizes } = PDFLib;
+    let docxFile = null;
+    let htmlContent = '';
+
+    const dropzone     = document.getElementById('dropzone');
+    const fileInput    = document.getElementById('fileInput');
+    const toolOptions  = document.getElementById('toolOptions');
+    const previewFrame = document.getElementById('previewFrame');
+    const convertBtn   = document.getElementById('convertBtn');
+    const progressWrap = document.getElementById('progressWrap');
+    const resultBox    = document.getElementById('resultBox');
+    const resultDesc   = document.getElementById('resultDesc');
+    const downloadBtn  = document.getElementById('downloadBtn');
+
+    setupDropzone(dropzone, files => handleFile(files[0]));
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+    async function handleFile(file) {
+      if (!file.name.match(/\.docx?$/i)) { showError('Please upload a .docx file.'); return; }
+      docxFile = file;
+      clearError();
+      htmlContent = '';
+      resultBox.classList.remove('visible');
+      previewFrame.innerHTML = 'Parsing document…';
+      toolOptions.style.display = 'block';
+
+      try {
+        const buf = await readFileAsArrayBuffer(file);
+        const result = await mammoth.convertToHtml({ arrayBuffer: buf });
+        htmlContent = result.value;
+        previewFrame.innerHTML = htmlContent || '<em>(Document appears to be empty)</em>';
+      } catch (err) {
+        showError('Could not read Word file: ' + err.message);
+        toolOptions.style.display = 'none';
+      }
+    }
+
+    convertBtn.addEventListener('click', async () => {
+      if (!docxFile || !htmlContent) return;
+      clearError();
+      convertBtn.disabled = true;
+      progressWrap.style.display = 'block';
+      resultBox.classList.remove('visible');
+
+      try {
+        setProgress(20, 'Setting up PDF...');
+
+        const pageSizeKey = document.getElementById('pageSize').value;
+        const orientation = document.getElementById('orientation').value;
+        const marginsKey  = document.getElementById('margins').value;
+
+        // Page dimensions (in points; 1pt = 1/72 inch)
+        const sizes = { A4: [595.28, 841.89], Letter: [612, 792], A3: [841.89, 1190.55] };
+        let [pw, ph] = sizes[pageSizeKey] || sizes.A4;
+        if (orientation === 'landscape') [pw, ph] = [ph, pw];
+
+        const marginMap = { normal: 71, narrow: 36, wide: 142 };
+        const margin = marginMap[marginsKey] || 71;
+
+        const pdfDoc   = await PDFDocument.create();
+        const font     = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+        setProgress(40, 'Extracting text content...');
+
+        // Parse HTML to structured text blocks
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlContent;
+        const blocks = [];
+        tempDiv.childNodes.forEach(node => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const tag  = node.tagName.toLowerCase();
+            const text = node.textContent.trim();
+            if (!text) return;
+            if (['h1','h2','h3'].includes(tag)) {
+              blocks.push({ text, type: 'heading', size: tag==='h1'?20:tag==='h2'?16:14 });
+            } else if (tag === 'p') {
+              blocks.push({ text, type: 'paragraph', size: 11 });
+            } else if (tag === 'ul' || tag === 'ol') {
+              node.querySelectorAll('li').forEach(li => {
+                blocks.push({ text: '• ' + li.textContent.trim(), type: 'list', size: 11 });
+              });
+            } else if (tag === 'table') {
+              node.querySelectorAll('tr').forEach(tr => {
+                const cells = Array.from(tr.querySelectorAll('td,th')).map(c => c.textContent.trim()).join('  |  ');
+                if (cells) blocks.push({ text: cells, type: 'table', size: 10 });
+              });
+            } else {
+              blocks.push({ text, type: 'paragraph', size: 11 });
+            }
+          }
+        });
+
+        setProgress(60, 'Laying out pages...');
+
+        const maxWidth = pw - margin * 2;
+        let page = pdfDoc.addPage([pw, ph]);
+        let y    = ph - margin;
+
+        function wrapText(text, f, sz, maxW) {
+          const words = text.split(' ');
+          const lines = []; let line = '';
+          words.forEach(w => {
+            const test = line ? line + ' ' + w : w;
+            const width = f.widthOfTextAtSize(test, sz);
+            if (width > maxW && line) { lines.push(line); line = w; }
+            else line = test;
+          });
+          if (line) lines.push(line);
+          return lines;
+        }
+
+        for (const block of blocks) {
+          const f      = block.type === 'heading' ? fontBold : font;
+          const sz     = block.size;
+          const gap    = block.type === 'heading' ? 14 : 6;
+          const lines  = wrapText(block.text, f, sz, maxWidth);
+          const needed = lines.length * (sz + 4) + gap;
+
+          if (y - needed < margin) {
+            page = pdfDoc.addPage([pw, ph]);
+            y    = ph - margin;
+          }
+          y -= gap;
+          lines.forEach(ln => {
+            page.drawText(ln, { x: margin, y, font: f, size: sz, color: rgb(0.1,0.1,0.1) });
+            y -= sz + 4;
+          });
+        }
+
+        setProgress(90, 'Saving PDF...');
+        const pdfBytes = await pdfDoc.save();
+        setProgress(100, 'Done!');
+
+        const outName = docxFile.name.replace(/\.docx?$/i, '') + '.pdf';
+        resultDesc.textContent = `${pdfDoc.getPageCount()} page PDF created from your Word document.`;
+        downloadBtn.onclick = () => downloadFile(pdfBytes, outName);
+        resultBox.classList.add('visible');
+
+      } catch (err) {
+        showError('Conversion failed: ' + err.message);
+      } finally {
+        convertBtn.disabled = false;
+        progressWrap.style.display = 'none';
+      }
+    });
+
+    function resetTool() {
+      docxFile = null; htmlContent = '';
+      previewFrame.innerHTML = '';
+      toolOptions.style.display = 'none';
+      resultBox.classList.remove('visible');
+      clearError();
+    }
+  </script>
+</body>
+</html>

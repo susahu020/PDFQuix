@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Add Page Numbers to PDF — PDFQuick</title>
+  <meta name="description" content="Add page numbers to your PDF online for free. Choose position, font, size, and starting number. No signup needed."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    .position-grid {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; max-width: 200px;
+    }
+    .pos-btn {
+      aspect-ratio: 1.6; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg); cursor: pointer; font-size: 11px; font-weight: 500;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .15s; color: var(--text-secondary);
+    }
+    .pos-btn:hover, .pos-btn.active { background: var(--red-light); border-color: var(--red); color: var(--red); }
+    .preview-canvas-wrap {
+      background: #f1f5f9; border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 20px;
+      display: flex; justify-content: center;
+      margin-top: 20px; min-height: 260px;
+    }
+    #previewCanvas { max-width: 100%; max-height: 360px; box-shadow: var(--shadow-md); display: none; }
+    .format-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .format-chip {
+      font-size: 13px; padding: 6px 14px; border-radius: 99px;
+      border: 1px solid var(--border); background: var(--white); cursor: pointer;
+      transition: all .15s; font-weight: 500; color: var(--text-secondary);
+    }
+    .format-chip:hover, .format-chip.active { background: var(--red-light); border-color: var(--red); color: var(--red); }
+    .number-input {
+      font-size: 14px; padding: 8px 12px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); background: var(--bg); outline: none; width: 90px;
+    }
+    .number-input:focus { border-color: var(--red); }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="container header-inner">
+      <a href="../index.html" class="logo">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" rx="8" fill="#E63946"/>
+          <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
+          <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
+        </svg>
+        PDFQuick
+      </a>
+    </div>
+  </header>
+
+  <section class="tool-page-hero">
+    <div class="container">
+      <a href="../index.html" class="back-link">← All tools</a>
+      <h1>Add Page Numbers</h1>
+      <p>Stamp page numbers onto every page of your PDF. Customize position, format, font size, and starting number.</p>
+    </div>
+  </section>
+
+  <section class="tool-page-body">
+    <div class="container">
+
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept=".pdf"/>
+        <div class="dropzone-icon">🔢</div>
+        <h3>Drop your PDF here</h3>
+        <p>Page numbers will be added to every page</p>
+        <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Choose PDF</button>
+      </div>
+
+      <div class="file-list" id="fileList"></div>
+
+      <div id="toolOptions" style="display:none">
+        <div class="options-panel" style="margin-top:20px">
+          <h3>Page number settings</h3>
+
+          <!-- Format -->
+          <div class="option-row" style="align-items:flex-start;gap:12px;">
+            <span class="option-label" style="margin-top:6px">Format</span>
+            <div class="format-chips" id="formatChips">
+              <button class="format-chip active" data-fmt="n"       onclick="setFormat(this)">1, 2, 3</button>
+              <button class="format-chip"        data-fmt="page_n"  onclick="setFormat(this)">Page 1</button>
+              <button class="format-chip"        data-fmt="n_of_m"  onclick="setFormat(this)">1 of 12</button>
+              <button class="format-chip"        data-fmt="dash_n"  onclick="setFormat(this)">— 1 —</button>
+            </div>
+          </div>
+
+          <!-- Position -->
+          <div class="option-row" style="align-items:flex-start;gap:12px;">
+            <span class="option-label" style="margin-top:4px">Position</span>
+            <div>
+              <div class="position-grid" id="posGrid">
+                <button class="pos-btn" data-pos="tl" onclick="setPos(this)">Top Left</button>
+                <button class="pos-btn" data-pos="tc" onclick="setPos(this)">Top Center</button>
+                <button class="pos-btn" data-pos="tr" onclick="setPos(this)">Top Right</button>
+                <button class="pos-btn" data-pos="bl" onclick="setPos(this)">Bot Left</button>
+                <button class="pos-btn active" data-pos="bc" onclick="setPos(this)">Bot Center</button>
+                <button class="pos-btn" data-pos="br" onclick="setPos(this)">Bot Right</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Font size -->
+          <div class="option-row">
+            <span class="option-label">Font size</span>
+            <input type="number" class="number-input" id="fontSize" value="12" min="8" max="36" oninput="updatePreview()"/>
+            <span style="font-size:13px;color:var(--text-muted)">pt</span>
+          </div>
+
+          <!-- Start number -->
+          <div class="option-row">
+            <span class="option-label">Start from</span>
+            <input type="number" class="number-input" id="startNum" value="1" min="0" max="9999" oninput="updatePreview()"/>
+            <span style="font-size:13px;color:var(--text-muted)">page number</span>
+          </div>
+
+          <!-- Skip first page -->
+          <div class="option-row">
+            <span class="option-label">Skip pages</span>
+            <select class="option-select" id="skipPages" onchange="updatePreview()">
+              <option value="0">Number all pages</option>
+              <option value="1">Skip first page (cover)</option>
+              <option value="2">Skip first 2 pages</option>
+              <option value="3">Skip first 3 pages</option>
+            </select>
+          </div>
+
+          <!-- Color -->
+          <div class="option-row">
+            <span class="option-label">Color</span>
+            <select class="option-select" id="numColor" onchange="updatePreview()">
+              <option value="#475569">Gray (default)</option>
+              <option value="#0f172a">Black</option>
+              <option value="#E63946">Red</option>
+              <option value="#2563EB">Blue</option>
+            </select>
+            <input type="color" id="customNumColor" value="#475569" title="Custom color"
+              style="width:32px;height:32px;border-radius:6px;border:1px solid var(--border);cursor:pointer;padding:2px;"
+              oninput="document.getElementById('numColor').value='custom'; updatePreview()"/>
+          </div>
+
+          <!-- Margin -->
+          <div class="option-row">
+            <span class="option-label">Margin from edge</span>
+            <input type="number" class="number-input" id="edgeMargin" value="24" min="8" max="80" oninput="updatePreview()"/>
+            <span style="font-size:13px;color:var(--text-muted)">pt</span>
+          </div>
+        </div>
+
+        <!-- Live preview -->
+        <div style="font-size:13px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:24px;margin-bottom:8px;">Preview</div>
+        <div class="preview-canvas-wrap">
+          <canvas id="previewCanvas"></canvas>
+        </div>
+
+        <div class="action-bar" style="margin-top:20px">
+          <button class="btn-action" id="applyBtn">🔢 Add Page Numbers</button>
+          <div class="progress-wrap" id="progressWrap" style="display:none">
+            <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+            <div class="progress-label">Numbering pages...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error-box" id="errorBox"></div>
+
+      <div class="result-box" id="resultBox">
+        <h3>✅ Page numbers added!</h3>
+        <p id="resultDesc"></p>
+        <button class="btn-download" id="downloadBtn">⬇ Download PDF</button>
+        <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Number another</button>
+      </div>
+
+      <div class="how-to">
+        <h2>How to add page numbers to a PDF</h2>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><h4>Upload PDF</h4><p>Choose the PDF you want to number.</p></div>
+          <div class="step"><div class="step-num">2</div><h4>Configure</h4><p>Set the format, position, font size, and starting number.</p></div>
+          <div class="step"><div class="step-num">3</div><h4>Preview</h4><p>See exactly how the numbers will look before applying.</p></div>
+          <div class="step"><div class="step-num">4</div><h4>Download</h4><p>Get your numbered PDF instantly.</p></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span class="logo-small">PDFQuick</span>
+      <p>Free PDF tools for everyone.</p>
+    </div>
+  </footer>
+
+  <script src="../js/utils.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const { PDFDocument, rgb, StandardFonts } = PDFLib;
+
+    let pdfFile = null;
+    let previewPdfDoc = null;
+    let totalPages = 0;
+    let selectedPos = 'bc';
+    let selectedFmt = 'n';
+
+    const dropzone      = document.getElementById('dropzone');
+    const fileInput     = document.getElementById('fileInput');
+    const fileListEl    = document.getElementById('fileList');
+    const toolOptions   = document.getElementById('toolOptions');
+    const applyBtn      = document.getElementById('applyBtn');
+    const progressWrap  = document.getElementById('progressWrap');
+    const resultBox     = document.getElementById('resultBox');
+    const resultDesc    = document.getElementById('resultDesc');
+    const downloadBtn   = document.getElementById('downloadBtn');
+    const previewCanvas = document.getElementById('previewCanvas');
+
+    setupDropzone(dropzone, f => handleFile(f[0]));
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+    async function handleFile(file) {
+      if (!file.name.endsWith('.pdf') && file.type !== 'application/pdf') { showError('Please upload a PDF.'); return; }
+      pdfFile = file;
+      clearError();
+      resultBox.classList.remove('visible');
+      renderFileList([file], fileListEl, () => { pdfFile = null; fileListEl.innerHTML = ''; toolOptions.style.display = 'none'; });
+
+      const buf = await readFileAsArrayBuffer(file);
+      previewPdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+      totalPages    = previewPdfDoc.numPages;
+      toolOptions.style.display = 'block';
+      updatePreview();
+    }
+
+    function setFormat(el) {
+      document.querySelectorAll('.format-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      selectedFmt = el.dataset.fmt;
+      updatePreview();
+    }
+    function setPos(el) {
+      document.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      selectedPos = el.dataset.pos;
+      updatePreview();
+    }
+
+    function formatLabel(pageIdx, totalPages, fmt, startNum) {
+      const n = pageIdx + startNum;
+      const m = totalPages + startNum - 1;
+      if (fmt === 'n')       return String(n);
+      if (fmt === 'page_n')  return `Page ${n}`;
+      if (fmt === 'n_of_m')  return `${n} of ${m}`;
+      if (fmt === 'dash_n')  return `— ${n} —`;
+      return String(n);
+    }
+
+    function hexToRgb01(hex) {
+      const r = parseInt(hex.slice(1,3),16)/255;
+      const g = parseInt(hex.slice(3,5),16)/255;
+      const b = parseInt(hex.slice(5,7),16)/255;
+      return [r,g,b];
+    }
+
+    async function updatePreview() {
+      if (!previewPdfDoc) return;
+      try {
+        const page     = await previewPdfDoc.getPage(1);
+        const viewport = page.getViewport({ scale: 1.3 });
+        previewCanvas.width  = viewport.width;
+        previewCanvas.height = viewport.height;
+        const ctx = previewCanvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        const fontSize   = parseInt(document.getElementById('fontSize').value) || 12;
+        const startNum   = parseInt(document.getElementById('startNum').value) || 1;
+        const skip       = parseInt(document.getElementById('skipPages').value) || 0;
+        const edgeMargin = parseInt(document.getElementById('edgeMargin').value) || 24;
+        const colorSel   = document.getElementById('numColor').value;
+        const colorHex   = colorSel === 'custom' ? document.getElementById('customNumColor').value : colorSel;
+        const scale      = 1.3;
+
+        if (skip >= 1) return; // first page is skipped, show blank
+
+        const label  = formatLabel(0, totalPages, selectedFmt, startNum);
+        const fsPx   = fontSize * scale;
+        ctx.font     = `500 ${fsPx}px Inter, Arial, sans-serif`;
+        ctx.fillStyle= colorHex;
+        ctx.textBaseline = 'middle';
+
+        const tw = viewport.width;
+        const th = viewport.height;
+        const em = edgeMargin * scale;
+        const tw2 = ctx.measureText(label).width;
+
+        const xMap = { l: em, c: tw/2 - tw2/2, r: tw - em - tw2 };
+        const yMap = { t: em + fsPx/2, b: th - em - fsPx/2 };
+        const side = selectedPos[0]; // t or b
+        const align= selectedPos[1]; // l, c, r
+        const x = xMap[align] ?? tw/2 - tw2/2;
+        const y = yMap[side]  ?? th - em - fsPx/2;
+
+        ctx.fillText(label, x, y);
+        previewCanvas.style.display = 'block';
+      } catch(e) { /* ignore */ }
+    }
+
+    applyBtn.addEventListener('click', async () => {
+      if (!pdfFile) return;
+      clearError();
+      applyBtn.disabled = true;
+      progressWrap.style.display = 'block';
+      resultBox.classList.remove('visible');
+
+      try {
+        setProgress(20, 'Loading PDF...');
+        const buf    = await readFileAsArrayBuffer(pdfFile);
+        const pdfDoc = await PDFDocument.load(buf, { ignoreEncryption: true });
+        const font   = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+        const fontSize   = parseInt(document.getElementById('fontSize').value) || 12;
+        const startNum   = parseInt(document.getElementById('startNum').value) || 1;
+        const skip       = parseInt(document.getElementById('skipPages').value) || 0;
+        const edgeMargin = parseInt(document.getElementById('edgeMargin').value) || 24;
+        const colorSel   = document.getElementById('numColor').value;
+        const colorHex   = colorSel === 'custom' ? document.getElementById('customNumColor').value : colorSel;
+        const [cr,cg,cb] = hexToRgb01(colorHex);
+
+        const pages = pdfDoc.getPages();
+        setProgress(50, 'Stamping numbers...');
+
+        pages.forEach((page, idx) => {
+          if (idx < skip) return;
+          const { width: pw, height: ph } = page.getSize();
+          const label    = formatLabel(idx - skip, totalPages - skip, selectedFmt, startNum);
+          const textW    = font.widthOfTextAtSize(label, fontSize);
+
+          const xMap = { l: edgeMargin, c: pw/2 - textW/2, r: pw - edgeMargin - textW };
+          const yMap = { t: ph - edgeMargin - fontSize, b: edgeMargin };
+          const side  = selectedPos[0];
+          const align = selectedPos[1];
+          const x = xMap[align] ?? pw/2 - textW/2;
+          const y = yMap[side]  ?? edgeMargin;
+
+          page.drawText(label, { x, y, size: fontSize, font, color: rgb(cr,cg,cb) });
+        });
+
+        setProgress(90, 'Saving...');
+        const pdfBytes = await pdfDoc.save({ useObjectStreams: true });
+        setProgress(100, 'Done!');
+
+        const numbered = pages.length - skip;
+        resultDesc.textContent = `Page numbers added to ${numbered} page${numbered>1?'s':''} (${skip > 0 ? `first ${skip} page${skip>1?'s':''} skipped` : 'all pages numbered'}).`;
+        downloadBtn.onclick = () => downloadFile(pdfBytes, 'numbered_' + pdfFile.name);
+        resultBox.classList.add('visible');
+
+      } catch(err) {
+        showError('Failed: ' + err.message);
+      } finally {
+        applyBtn.disabled = false;
+        progressWrap.style.display = 'none';
+      }
+    });
+
+    function resetTool() {
+      pdfFile = null; previewPdfDoc = null; totalPages = 0;
+      fileListEl.innerHTML = '';
+      toolOptions.style.display = 'none';
+      resultBox.classList.remove('visible');
+      previewCanvas.style.display = 'none';
+      clearError();
+    }
+  </script>
+</body>
+</html>

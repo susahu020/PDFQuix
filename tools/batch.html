@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Batch Process PDFs — PDFQuick</title>
+  <meta name="description" content="Process multiple PDFs at once. Batch compress, watermark, add page numbers, or rotate many PDFs in one go. Free, no signup."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <style>
+    .operation-grid {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; margin-top:12px;
+    }
+    .op-card {
+      border:2px solid var(--border); border-radius:var(--radius-md);
+      padding:16px; cursor:pointer; background:var(--white); transition:all .15s; text-align:center;
+    }
+    .op-card:hover { border-color:var(--red); }
+    .op-card.active { border-color:var(--red); background:var(--red-light); }
+    .op-card .op-icon { font-size:28px; margin-bottom:8px; }
+    .op-card h4 { font-size:14px; font-weight:600; margin-bottom:4px; }
+    .op-card p  { font-size:12px; color:var(--text-secondary); }
+
+    .file-queue { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+    .queue-item {
+      background:var(--white); border:1px solid var(--border);
+      border-radius:var(--radius-md); padding:12px 14px;
+      display:flex; align-items:center; gap:12px;
+    }
+    .queue-item .q-name { flex:1; font-size:13px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .queue-item .q-size { font-size:12px; color:var(--text-muted); flex-shrink:0; }
+    .queue-item .q-status { font-size:12px; font-weight:600; flex-shrink:0; min-width:80px; text-align:right; }
+    .status-waiting  { color:var(--text-muted); }
+    .status-running  { color:var(--blue); }
+    .status-done     { color:var(--green); }
+    .status-error    { color:var(--red); }
+    .q-remove { background:none; border:none; cursor:pointer; color:var(--text-muted); font-size:16px; padding:2px 6px; transition:color .15s; }
+    .q-remove:hover { color:var(--red); }
+
+    .op-settings { margin-top:16px; display:none; }
+    .op-settings.visible { display:block; }
+
+    .results-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-top:16px; }
+    .result-card {
+      background:var(--white); border:1px solid #bbf7d0;
+      border-radius:var(--radius-md); padding:14px;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .result-card .r-name { font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .result-card .r-meta { font-size:12px; color:var(--text-secondary); }
+    .btn-dl-small {
+      display:inline-flex; align-items:center; gap:6px;
+      background:var(--green); color:white; border:none;
+      font-size:12px; font-weight:500; padding:7px 14px;
+      border-radius:var(--radius-sm); cursor:pointer; transition:background .15s;
+    }
+    .btn-dl-small:hover { background:#15803d; }
+
+    .batch-summary {
+      background:#f0fdf4; border:1px solid #bbf7d0;
+      border-radius:var(--radius-lg); padding:20px 24px; margin-top:20px;
+    }
+    .batch-summary h3 { font-size:16px; font-weight:600; color:#15803d; margin-bottom:8px; }
+    .summary-stats { display:flex; gap:20px; flex-wrap:wrap; margin:12px 0; }
+    .s-stat { font-size:14px; }
+    .s-stat strong { color:var(--text-primary); }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="container header-inner">
+    <a href="../index.html" class="logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="8" fill="#E63946"/>
+        <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
+        <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
+      </svg>
+      PDFQuick
+    </a>
+  </div>
+</header>
+
+<section class="tool-page-hero">
+  <div class="container">
+    <a href="../index.html" class="back-link">← All tools</a>
+    <h1>Batch Process PDFs</h1>
+    <p>Apply the same operation to many PDFs at once — compress, watermark, rotate, or add page numbers in bulk.</p>
+  </div>
+</section>
+
+<section class="tool-page-body">
+  <div class="container">
+
+    <!-- Step 1: Choose operation -->
+    <div class="options-panel">
+      <h3>Step 1 — Choose an operation</h3>
+      <div class="operation-grid" id="opGrid">
+        <div class="op-card active" data-op="compress" onclick="selectOp(this)">
+          <div class="op-icon">📦</div>
+          <h4>Compress</h4>
+          <p>Reduce file size of all PDFs</p>
+        </div>
+        <div class="op-card" data-op="watermark" onclick="selectOp(this)">
+          <div class="op-icon">💧</div>
+          <h4>Watermark</h4>
+          <p>Add text watermark to all pages</p>
+        </div>
+        <div class="op-card" data-op="pagenumbers" onclick="selectOp(this)">
+          <div class="op-icon">🔢</div>
+          <h4>Page Numbers</h4>
+          <p>Add page numbers to all PDFs</p>
+        </div>
+        <div class="op-card" data-op="rotate" onclick="selectOp(this)">
+          <div class="op-icon">🔄</div>
+          <h4>Rotate All</h4>
+          <p>Rotate all pages in every PDF</p>
+        </div>
+        <div class="op-card" data-op="metadata" onclick="selectOp(this)">
+          <div class="op-icon">🏷️</div>
+          <h4>Set Metadata</h4>
+          <p>Set title, author, subject on all PDFs</p>
+        </div>
+        <div class="op-card" data-op="grayscale" onclick="selectOp(this)">
+          <div class="op-icon">🔲</div>
+          <h4>Strip Metadata</h4>
+          <p>Remove author, creator, hidden data</p>
+        </div>
+      </div>
+
+      <!-- Operation-specific settings -->
+      <div class="op-settings visible" id="settings-compress">
+        <div class="option-row" style="margin-top:12px;">
+          <span class="option-label">Quality</span>
+          <select class="option-select" id="batchQuality">
+            <option value="high">High quality (mild compression)</option>
+            <option value="medium" selected>Balanced</option>
+            <option value="low">Small file (more compression)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="op-settings" id="settings-watermark">
+        <div class="option-row" style="margin-top:12px;">
+          <span class="option-label">Text</span>
+          <input type="text" id="batchWmText" value="CONFIDENTIAL"
+            style="font-size:14px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);outline:none;flex:1;max-width:280px;"/>
+        </div>
+        <div class="option-row">
+          <span class="option-label">Opacity</span>
+          <select class="option-select" id="batchWmOpacity">
+            <option value="0.1">Light (10%)</option>
+            <option value="0.25" selected>Normal (25%)</option>
+            <option value="0.5">Bold (50%)</option>
+          </select>
+        </div>
+        <div class="option-row">
+          <span class="option-label">Position</span>
+          <select class="option-select" id="batchWmPos">
+            <option value="mc" selected>Center (diagonal)</option>
+            <option value="bc">Bottom center</option>
+            <option value="tc">Top center</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="op-settings" id="settings-pagenumbers">
+        <div class="option-row" style="margin-top:12px;">
+          <span class="option-label">Format</span>
+          <select class="option-select" id="batchPnFormat">
+            <option value="n">1, 2, 3</option>
+            <option value="page_n" selected>Page 1, Page 2</option>
+            <option value="n_of_m">1 of 12</option>
+          </select>
+        </div>
+        <div class="option-row">
+          <span class="option-label">Position</span>
+          <select class="option-select" id="batchPnPos">
+            <option value="bc" selected>Bottom center</option>
+            <option value="br">Bottom right</option>
+            <option value="bl">Bottom left</option>
+            <option value="tc">Top center</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="op-settings" id="settings-rotate">
+        <div class="option-row" style="margin-top:12px;">
+          <span class="option-label">Rotation</span>
+          <select class="option-select" id="batchRotate">
+            <option value="90">90° clockwise</option>
+            <option value="180">180°</option>
+            <option value="270">90° counter-clockwise</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="op-settings" id="settings-metadata">
+        <div class="option-row" style="margin-top:12px;">
+          <span class="option-label">Title</span>
+          <input type="text" id="metaTitle" placeholder="Leave blank to keep original"
+            style="font-size:14px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);outline:none;flex:1;max-width:280px;"/>
+        </div>
+        <div class="option-row">
+          <span class="option-label">Author</span>
+          <input type="text" id="metaAuthor" placeholder="Author name"
+            style="font-size:14px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);outline:none;flex:1;max-width:280px;"/>
+        </div>
+        <div class="option-row">
+          <span class="option-label">Subject</span>
+          <input type="text" id="metaSubject" placeholder="Subject"
+            style="font-size:14px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);outline:none;flex:1;max-width:280px;"/>
+        </div>
+      </div>
+
+      <div class="op-settings" id="settings-grayscale">
+        <p style="font-size:13px;color:var(--text-secondary);margin-top:12px;">Removes title, author, creator, producer, and keyword metadata from all uploaded PDFs.</p>
+      </div>
+    </div>
+
+    <!-- Step 2: Upload files -->
+    <div class="options-panel" style="margin-top:20px;">
+      <h3>Step 2 — Upload your PDFs</h3>
+      <div class="dropzone" id="dropzone" style="padding:28px 20px;">
+        <input type="file" id="fileInput" accept=".pdf" multiple/>
+        <div class="dropzone-icon">📂</div>
+        <h3>Drop multiple PDF files here</h3>
+        <p>Select as many PDFs as you need — processed in your browser</p>
+        <button class="btn-upload" onclick="event.stopPropagation();document.getElementById('fileInput').click()">Choose PDFs</button>
+      </div>
+
+      <div class="file-queue" id="fileQueue"></div>
+      <div id="queueInfo" style="font-size:13px;color:var(--text-muted);margin-top:8px;display:none;"></div>
+    </div>
+
+    <!-- Step 3: Process -->
+    <div id="actionArea" style="display:none;">
+      <div class="action-bar" style="margin-top:16px;">
+        <button class="btn-action" id="processBtn">⚡ Process all PDFs</button>
+        <div class="progress-wrap" id="progressWrap" style="display:none">
+          <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+          <div class="progress-label" id="progressLabel">Processing...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <!-- Results -->
+    <div id="batchResults" style="display:none;">
+      <div class="batch-summary">
+        <h3>✅ Batch complete!</h3>
+        <div class="summary-stats" id="summaryStats"></div>
+        <button class="btn-action" style="margin-top:8px;" id="downloadAllBtn">⬇ Download all as ZIP</button>
+        <button class="btn-upload" style="margin-left:12px;margin-top:0;background:var(--white);color:var(--text-secondary);border:1px solid var(--border);" onclick="resetTool()">Process more</button>
+      </div>
+      <div class="results-grid" id="resultsGrid"></div>
+    </div>
+
+    <div class="how-to">
+      <h2>How batch processing works</h2>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><h4>Pick operation</h4><p>Choose what you want to do — compress, watermark, rotate, etc.</p></div>
+        <div class="step"><div class="step-num">2</div><h4>Upload PDFs</h4><p>Select as many PDFs as you want in one go.</p></div>
+        <div class="step"><div class="step-num">3</div><h4>Process</h4><p>All files are processed in your browser, simultaneously.</p></div>
+        <div class="step"><div class="step-num">4</div><h4>Download ZIP</h4><p>Get all processed PDFs in one ZIP archive.</p></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <span class="logo-small">PDFQuick</span>
+    <p>Free PDF tools for everyone.</p>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="../js/utils.js"></script>
+<script>
+const { PDFDocument, rgb, StandardFonts, degrees } = PDFLib;
+
+let files       = [];
+let selectedOp  = 'compress';
+let processedFiles = []; // { name, bytes, origSize }
+
+const dropzone   = document.getElementById('dropzone');
+const fileInput  = document.getElementById('fileInput');
+const fileQueue  = document.getElementById('fileQueue');
+const queueInfo  = document.getElementById('queueInfo');
+const actionArea = document.getElementById('actionArea');
+const processBtn = document.getElementById('processBtn');
+const progressWrap = document.getElementById('progressWrap');
+const batchResults = document.getElementById('batchResults');
+
+function selectOp(el) {
+  document.querySelectorAll('.op-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  selectedOp = el.dataset.op;
+  document.querySelectorAll('.op-settings').forEach(s => s.classList.remove('visible'));
+  const panel = document.getElementById('settings-' + selectedOp);
+  if (panel) panel.classList.add('visible');
+}
+
+setupDropzone(dropzone, newFiles => addFiles(newFiles));
+fileInput.addEventListener('change', e => { if(e.target.files.length) addFiles(Array.from(e.target.files)); });
+
+function addFiles(newFiles) {
+  const pdfs = newFiles.filter(f => f.type === 'application/pdf' || f.name.endsWith('.pdf'));
+  if (!pdfs.length) { showError('Please upload PDF files only.'); return; }
+  files = [...files, ...pdfs];
+  clearError();
+  renderQueue();
+}
+
+function renderQueue() {
+  fileQueue.innerHTML = '';
+  files.forEach((file, i) => {
+    const item = document.createElement('div');
+    item.className = 'queue-item';
+    item.id = `qitem-${i}`;
+    item.innerHTML = `
+      <span style="font-size:20px;">📄</span>
+      <span class="q-name">${file.name}</span>
+      <span class="q-size">${formatBytes(file.size)}</span>
+      <span class="q-status status-waiting" id="qstatus-${i}">Waiting</span>
+      <button class="q-remove" onclick="removeFile(${i})" title="Remove">✕</button>
+    `;
+    fileQueue.appendChild(item);
+  });
+  const show = files.length > 0;
+  queueInfo.style.display  = show ? 'block' : 'none';
+  actionArea.style.display = show ? 'block' : 'none';
+  queueInfo.textContent    = `${files.length} PDF${files.length>1?'s':''} queued`;
+}
+
+function removeFile(idx) {
+  files.splice(idx, 1);
+  renderQueue();
+}
+
+function setStatus(idx, text, cls) {
+  const el = document.getElementById(`qstatus-${idx}`);
+  if (el) { el.textContent = text; el.className = `q-status ${cls}`; }
+}
+
+processBtn.addEventListener('click', async () => {
+  if (!files.length) return;
+  clearError();
+  processBtn.disabled = true;
+  progressWrap.style.display = 'block';
+  batchResults.style.display = 'none';
+  processedFiles = [];
+
+  try {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const pct  = Math.round((i / files.length) * 95);
+      setProgress(pct, `Processing ${i+1} of ${files.length}: ${file.name}`);
+      setStatus(i, 'Running…', 'status-running');
+      document.getElementById('progressLabel').textContent = `Processing ${i+1}/${files.length}: ${file.name}`;
+
+      try {
+        const bytes = await processFile(file);
+        processedFiles.push({ name: 'processed_' + file.name, bytes, origSize: file.size });
+        setStatus(i, `✓ Done (${formatBytes(bytes.length)})`, 'status-done');
+      } catch(err) {
+        setStatus(i, '✗ Error', 'status-error');
+        processedFiles.push({ name: file.name, bytes: null, origSize: file.size, error: err.message });
+      }
+    }
+
+    setProgress(100, 'All done!');
+    showResults();
+
+  } catch(err) {
+    showError('Batch processing failed: ' + err.message);
+  } finally {
+    processBtn.disabled = false;
+    progressWrap.style.display = 'none';
+  }
+});
+
+async function processFile(file) {
+  const buf    = await readFileAsArrayBuffer(file);
+  const pdfDoc = await PDFDocument.load(buf, { ignoreEncryption: true });
+
+  if (selectedOp === 'compress') {
+    const q = document.getElementById('batchQuality').value;
+    return await pdfDoc.save({ useObjectStreams: q !== 'high' });
+
+  } else if (selectedOp === 'watermark') {
+    const font    = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const text    = document.getElementById('batchWmText').value || 'WATERMARK';
+    const opacity = parseFloat(document.getElementById('batchWmOpacity').value);
+    const pos     = document.getElementById('batchWmPos').value;
+    pdfDoc.getPages().forEach(page => {
+      const { width:pw, height:ph } = page.getSize();
+      const sz    = 56;
+      const tw    = font.widthOfTextAtSize(text, sz);
+      const posMap = { mc:[pw/2-tw/2,ph/2-sz/2], bc:[pw/2-tw/2,30], tc:[pw/2-tw/2,ph-30-sz] };
+      const [x,y] = posMap[pos] || [pw/2-tw/2,ph/2];
+      const rot   = pos==='mc' ? -45 : 0;
+      page.drawText(text, { x, y, size:sz, font, color:rgb(0.3,0.3,0.3), opacity, rotate:degrees(rot) });
+    });
+    return await pdfDoc.save();
+
+  } else if (selectedOp === 'pagenumbers') {
+    const font   = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fmt    = document.getElementById('batchPnFormat').value;
+    const pos    = document.getElementById('batchPnPos').value;
+    const pages  = pdfDoc.getPages();
+    const total  = pages.length;
+    pages.forEach((page, idx) => {
+      const { width:pw, height:ph } = page.getSize();
+      const n = idx+1;
+      const label = fmt==='n' ? String(n) : fmt==='page_n' ? `Page ${n}` : `${n} of ${total}`;
+      const sz    = 11;
+      const tw    = font.widthOfTextAtSize(label, sz);
+      const posMap = { bc:[pw/2-tw/2,20], br:[pw-40-tw,20], bl:[40,20], tc:[pw/2-tw/2,ph-28] };
+      const [x,y] = posMap[pos] || [pw/2-tw/2,20];
+      page.drawText(label, { x, y, size:sz, font, color:rgb(0.28,0.35,0.43) });
+    });
+    return await pdfDoc.save();
+
+  } else if (selectedOp === 'rotate') {
+    const deg = parseInt(document.getElementById('batchRotate').value);
+    pdfDoc.getPages().forEach(page => {
+      const cur = page.getRotation().angle;
+      page.setRotation(degrees((cur + deg) % 360));
+    });
+    return await pdfDoc.save();
+
+  } else if (selectedOp === 'metadata') {
+    const title   = document.getElementById('metaTitle').value.trim();
+    const author  = document.getElementById('metaAuthor').value.trim();
+    const subject = document.getElementById('metaSubject').value.trim();
+    if (title)   pdfDoc.setTitle(title);
+    if (author)  pdfDoc.setAuthor(author);
+    if (subject) pdfDoc.setSubject(subject);
+    pdfDoc.setProducer('PDFQuick');
+    return await pdfDoc.save();
+
+  } else if (selectedOp === 'grayscale') {
+    // Strip metadata
+    pdfDoc.setTitle('');
+    pdfDoc.setAuthor('');
+    pdfDoc.setSubject('');
+    pdfDoc.setKeywords([]);
+    pdfDoc.setProducer('');
+    pdfDoc.setCreator('');
+    return await pdfDoc.save({ useObjectStreams: true });
+  }
+
+  return await pdfDoc.save();
+}
+
+function showResults() {
+  const succeeded = processedFiles.filter(f => f.bytes);
+  const failed    = processedFiles.filter(f => !f.bytes);
+  const savedBytes = processedFiles.reduce((s,f) => {
+    if (f.bytes) return s + (f.origSize - f.bytes.length);
+    return s;
+  }, 0);
+
+  document.getElementById('summaryStats').innerHTML = `
+    <div class="s-stat">✅ <strong>${succeeded.length}</strong> processed</div>
+    ${failed.length ? `<div class="s-stat">❌ <strong>${failed.length}</strong> failed</div>` : ''}
+    ${savedBytes > 0 ? `<div class="s-stat">💾 <strong>${formatBytes(savedBytes)}</strong> saved</div>` : ''}
+  `;
+
+  const grid = document.getElementById('resultsGrid');
+  grid.innerHTML = '';
+  succeeded.forEach(({ name, bytes, origSize }) => {
+    const pct = origSize > 0 ? Math.round(((origSize - bytes.length) / origSize) * 100) : 0;
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.innerHTML = `
+      <div class="r-name" title="${name}">${name}</div>
+      <div class="r-meta">${formatBytes(bytes.length)} ${pct > 0 ? `(−${pct}%)` : ''}</div>
+    `;
+    const btn = document.createElement('button');
+    btn.className = 'btn-dl-small';
+    btn.innerHTML = '⬇ Download';
+    btn.onclick = () => downloadFile(bytes, name);
+    card.appendChild(btn);
+    grid.appendChild(card);
+  });
+
+  document.getElementById('downloadAllBtn').onclick = async () => {
+    const zip = new JSZip();
+    succeeded.forEach(({ name, bytes }) => zip.file(name, bytes));
+    const zipBlob = await zip.generateAsync({ type:'blob' });
+    downloadFile(zipBlob, 'batch_processed.zip', 'application/zip');
+  };
+
+  batchResults.style.display = 'block';
+  batchResults.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function resetTool() {
+  files=[]; processedFiles=[];
+  fileQueue.innerHTML='';
+  queueInfo.style.display='none';
+  actionArea.style.display='none';
+  batchResults.style.display='none';
+  clearError();
+}
+</script>
+</body>
+</html>

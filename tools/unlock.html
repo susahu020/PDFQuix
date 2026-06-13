@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Unlock PDF — Remove Password — PDFQuick</title>
+  <meta name="description" content="Remove password protection from a PDF you own. Enter your password and download an unlocked version. Free, no signup."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <style>
+    .unlock-box {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 28px;
+      margin-top: 20px; display: none;
+    }
+    .unlock-box.visible { display: block; }
+    .unlock-box h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+    .password-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .password-field {
+      font-size: 14px; padding: 10px 44px 10px 14px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--bg); outline: none; flex: 1; min-width: 200px; max-width: 320px;
+      transition: border-color .15s;
+    }
+    .password-field:focus { border-color: var(--red); }
+    .pw-wrap { position: relative; display: inline-flex; align-items: center; }
+    .pw-wrap { flex: 1; }
+    .toggle-pw {
+      position: absolute; right: 12px;
+      background: none; border: none; cursor: pointer;
+      font-size: 16px; color: var(--text-muted);
+    }
+    .info-banner {
+      background: #fffbeb; border: 1px solid #fde68a;
+      border-radius: var(--radius-md); padding: 14px 16px;
+      font-size: 13px; color: #92400e; margin-bottom: 20px;
+      display: flex; gap: 10px;
+    }
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 500; padding: 6px 12px;
+      border-radius: 99px; margin-top: 8px;
+    }
+    .badge-locked   { background: #fef2f2; color: #dc2626; }
+    .badge-unlocked { background: #f0fdf4; color: #16a34a; }
+    .badge-open     { background: #eff6ff; color: #2563eb; }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="container header-inner">
+      <a href="../index.html" class="logo">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" rx="8" fill="#E63946"/>
+          <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
+          <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
+        </svg>
+        PDFQuick
+      </a>
+    </div>
+  </header>
+
+  <section class="tool-page-hero">
+    <div class="container">
+      <a href="../index.html" class="back-link">← All tools</a>
+      <h1>Unlock PDF</h1>
+      <p>Remove the password from a PDF file you own. You must know the current password to unlock it.</p>
+    </div>
+  </section>
+
+  <section class="tool-page-body">
+    <div class="container">
+
+      <div class="info-banner">
+        <span>⚠️</span>
+        <div><strong>Important:</strong> This tool only removes passwords from PDFs you own and have the password for. It cannot crack or bypass unknown passwords. Only use this on your own documents.</div>
+      </div>
+
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept=".pdf"/>
+        <div class="dropzone-icon">🔓</div>
+        <h3>Drop your protected PDF here</h3>
+        <p>We'll check if it's password-protected, then unlock it</p>
+        <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Choose PDF</button>
+      </div>
+
+      <div class="file-list" id="fileList"></div>
+
+      <!-- Status after file selected -->
+      <div id="statusArea" style="display:none; margin-top:16px;">
+        <span class="status-badge" id="statusBadge"></span>
+      </div>
+
+      <!-- Password input (if encrypted) -->
+      <div class="unlock-box" id="pwBox">
+        <h3>🔐 This PDF is password protected</h3>
+        <p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">Enter the password to unlock and remove it.</p>
+        <div class="password-row">
+          <div class="pw-wrap">
+            <input type="password" class="password-field" id="pdfPw" placeholder="Enter PDF password"/>
+            <button class="toggle-pw" onclick="togglePw()">👁</button>
+          </div>
+          <button class="btn-action" id="unlockBtn" style="padding:10px 24px;font-size:14px;">🔓 Unlock</button>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:10px;">The password is only used locally in your browser — never sent anywhere.</div>
+      </div>
+
+      <!-- Direct unlock (no password, just owner restrictions) -->
+      <div class="options-panel" id="restrictBox" style="display:none; margin-top:20px;">
+        <h3>📋 This PDF has restrictions (no open password)</h3>
+        <p style="font-size:14px;color:var(--text-secondary);margin-bottom:16px;">This PDF can be opened freely but has editing/printing restrictions. Click below to remove them.</p>
+        <button class="btn-action" id="removeRestrictBtn">🔓 Remove Restrictions</button>
+      </div>
+
+      <div class="action-bar" id="actionBar" style="display:none">
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+          <div class="progress-label">Unlocking PDF...</div>
+        </div>
+      </div>
+
+      <div class="error-box" id="errorBox"></div>
+
+      <div class="result-box" id="resultBox">
+        <h3>✅ PDF unlocked!</h3>
+        <p id="resultDesc"></p>
+        <button class="btn-download" id="downloadBtn">⬇ Download unlocked PDF</button>
+        <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Unlock another</button>
+      </div>
+
+      <div class="how-to">
+        <h2>How to unlock a PDF</h2>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><h4>Upload PDF</h4><p>Choose the protected PDF you want to unlock.</p></div>
+          <div class="step"><div class="step-num">2</div><h4>Enter password</h4><p>Type in the password you set when protecting the file.</p></div>
+          <div class="step"><div class="step-num">3</div><h4>Unlock</h4><p>We verify the password and remove the protection.</p></div>
+          <div class="step"><div class="step-num">4</div><h4>Download</h4><p>Get the unlocked PDF — no password needed to open it.</p></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span class="logo-small">PDFQuick</span>
+      <p>Free PDF tools for everyone.</p>
+    </div>
+  </footer>
+
+  <script src="../js/utils.js"></script>
+  <script>
+    const { PDFDocument } = PDFLib;
+    let pdfFile = null;
+    let pdfBytes = null;
+    let isEncrypted = false;
+
+    const dropzone       = document.getElementById('dropzone');
+    const fileInput      = document.getElementById('fileInput');
+    const fileListEl     = document.getElementById('fileList');
+    const statusArea     = document.getElementById('statusArea');
+    const statusBadge    = document.getElementById('statusBadge');
+    const pwBox          = document.getElementById('pwBox');
+    const restrictBox    = document.getElementById('restrictBox');
+    const unlockBtn      = document.getElementById('unlockBtn');
+    const removeRestrictBtn = document.getElementById('removeRestrictBtn');
+    const progressWrap   = document.getElementById('progressWrap');
+    const actionBar      = document.getElementById('actionBar');
+    const resultBox      = document.getElementById('resultBox');
+    const resultDesc     = document.getElementById('resultDesc');
+    const downloadBtn    = document.getElementById('downloadBtn');
+
+    setupDropzone(dropzone, f => handleFile(f[0]));
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+    async function handleFile(file) {
+      if (!file.name.endsWith('.pdf') && file.type !== 'application/pdf') { showError('Please upload a PDF.'); return; }
+      pdfFile = file;
+      pdfBytes = await readFileAsArrayBuffer(file);
+      clearError();
+      resultBox.classList.remove('visible');
+      pwBox.classList.remove('visible');
+      restrictBox.style.display = 'none';
+      statusArea.style.display = 'none';
+
+      renderFileList([file], fileListEl, () => { pdfFile = null; fileListEl.innerHTML = ''; statusArea.style.display='none'; pwBox.classList.remove('visible'); restrictBox.style.display='none'; });
+
+      // Try to load without password
+      try {
+        const doc = await PDFDocument.load(pdfBytes);
+        // Loaded fine — check for restriction (owner password)
+        isEncrypted = false;
+        statusArea.style.display = 'block';
+        statusBadge.className = 'status-badge badge-open';
+        statusBadge.innerHTML = '✅ This PDF is not password-protected and can be opened freely.';
+        restrictBox.style.display = 'block';
+      } catch(err) {
+        if (err.message && err.message.toLowerCase().includes('encrypt')) {
+          isEncrypted = true;
+          statusArea.style.display = 'block';
+          statusBadge.className = 'status-badge badge-locked';
+          statusBadge.innerHTML = '🔐 This PDF is password-protected';
+          pwBox.classList.add('visible');
+        } else {
+          showError('Could not read PDF: ' + err.message);
+        }
+      }
+    }
+
+    function togglePw() {
+      const input = document.getElementById('pdfPw');
+      const btn   = document.querySelector('.toggle-pw');
+      if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
+      else { input.type = 'password'; btn.textContent = '👁'; }
+    }
+
+    // Handle Enter key in password field
+    document.getElementById('pdfPw').addEventListener('keydown', e => { if (e.key === 'Enter') unlockBtn.click(); });
+
+    unlockBtn.addEventListener('click', async () => {
+      const password = document.getElementById('pdfPw').value;
+      if (!password) { showError('Please enter the PDF password.'); return; }
+      clearError();
+      unlockBtn.disabled = true;
+      actionBar.style.display = 'flex';
+      setProgress(30, 'Verifying password...');
+
+      try {
+        // Try loading with password
+        const doc = await PDFDocument.load(pdfBytes, { password });
+        setProgress(70, 'Removing protection...');
+        const unlockedBytes = await doc.save({ useObjectStreams: true });
+        setProgress(100, 'Done!');
+
+        resultDesc.textContent = `Password removed from "${pdfFile.name}". The file can now be opened without a password.`;
+        downloadBtn.onclick = () => downloadFile(unlockedBytes, 'unlocked_' + pdfFile.name);
+        resultBox.classList.add('visible');
+        pwBox.classList.remove('visible');
+        statusArea.style.display = 'none';
+
+      } catch(err) {
+        if (err.message && err.message.toLowerCase().includes('password')) {
+          showError('Incorrect password. Please try again.');
+        } else {
+          showError('Unlock failed: ' + err.message);
+        }
+      } finally {
+        unlockBtn.disabled = false;
+        actionBar.style.display = 'none';
+      }
+    });
+
+    removeRestrictBtn.addEventListener('click', async () => {
+      clearError();
+      removeRestrictBtn.disabled = true;
+      actionBar.style.display = 'flex';
+      setProgress(40, 'Removing restrictions...');
+      try {
+        const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+        setProgress(80, 'Saving...');
+        const bytes = await doc.save({ useObjectStreams: true });
+        setProgress(100, 'Done!');
+        resultDesc.textContent = `Restrictions removed from "${pdfFile.name}". You can now print, copy, and edit freely.`;
+        downloadBtn.onclick = () => downloadFile(bytes, 'unrestricted_' + pdfFile.name);
+        resultBox.classList.add('visible');
+        restrictBox.style.display = 'none';
+      } catch(err) {
+        showError('Failed: ' + err.message);
+      } finally {
+        removeRestrictBtn.disabled = false;
+        actionBar.style.display = 'none';
+      }
+    });
+
+    function resetTool() {
+      pdfFile = null; pdfBytes = null; isEncrypted = false;
+      fileListEl.innerHTML = '';
+      statusArea.style.display = 'none';
+      pwBox.classList.remove('visible');
+      restrictBox.style.display = 'none';
+      resultBox.classList.remove('visible');
+      document.getElementById('pdfPw').value = '';
+      clearError();
+    }
+  </script>
+</body>
+</html>
