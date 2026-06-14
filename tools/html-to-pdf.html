@@ -70,27 +70,15 @@
     [data-theme="dark"] .mode-tab:hover { color: var(--dm-text-primary); }
     [data-theme="dark"] .tpl-btn { background: var(--dm-surface); border-color: var(--dm-border); color: var(--dm-text-secondary); }
   </style>
+<script>
+(function(){
+  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
 </head>
 <body>
-<header class="header">
-  <div class="container header-inner">
-    <a href="../index.html" class="logo">
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-        <rect width="28" height="28" rx="8" fill="#E63946"/>
-        <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
-        <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
-      </svg>
-      PDFQuick
-    </a>
-    <nav class="nav">
-      <a href="compress.html">Compress</a>
-      <a href="merge.html">Merge</a>
-      <a href="esign.html">e-Sign</a>
-      <a href="../about.html">About</a>
-      <button class="dm-toggle" id="dmToggle" onclick="toggleDarkMode()">🌙 Dark</button>
-    </nav>
-  </div>
-</header>
+
 
 <section class="tool-page-hero">
   <div class="container">
@@ -257,7 +245,8 @@
       h1,h2,h3 { color: #111; margin-top: 1.4em; } table { border-collapse: collapse; width: 100%; }
       th,td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; }
       th { background: #f5f5f5; font-weight: 600; }
-    </style></head><body>${body}</body></html>`;
+    </style></head><body>${body}<script src="../js/header.js"></script>
+</body></html>`;
   }
 
   function updatePreview() {
@@ -418,10 +407,6 @@
     loadTemplate('invoice');
   });
 </script>
-<script>
-(function(){var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.setAttribute("data-theme",t);})();
-function toggleDarkMode(){var cur=document.documentElement.getAttribute("data-theme"),next=cur==="dark"?"light":"dark";localStorage.setItem("pdfquick-theme",next);document.documentElement.setAttribute("data-theme",next);document.body.setAttribute("data-theme",next);var btn=document.getElementById("dmToggle");if(btn)btn.innerHTML=next==="dark"?"☀️ Light":"🌙 Dark";}
-document.addEventListener("DOMContentLoaded",function(){var t=document.documentElement.getAttribute("data-theme"),btn=document.getElementById("dmToggle");if(btn)btn.innerHTML=t==="dark"?"☀️ Light":"🌙 Dark";});
-</script>
+
 </body>
 </html>

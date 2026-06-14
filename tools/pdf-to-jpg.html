@@ -30,21 +30,16 @@
     .quality-slider { width: 160px; accent-color: var(--red); }
     .quality-val { font-size: 14px; font-weight: 600; color: var(--red); min-width: 40px; }
   </style>
+<script>
+(function(){
+  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
 </head>
 <body>
 
-  <header class="header">
-    <div class="container header-inner">
-      <a href="../index.html" class="logo">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <rect width="28" height="28" rx="8" fill="#E63946"/>
-          <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
-          <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
-        </svg>
-        PDFQuick
-      </a>
-    </div>
-  </header>
+  
 
   <section class="tool-page-hero">
     <div class="container">
@@ -261,10 +256,7 @@
       clearError();
     }
   </script>
-<script>
-(function(){var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.setAttribute("data-theme",t);})();
-function toggleDarkMode(){var cur=document.documentElement.getAttribute("data-theme"),next=cur==="dark"?"light":"dark";localStorage.setItem("pdfquick-theme",next);document.documentElement.setAttribute("data-theme",next);document.body.setAttribute("data-theme",next);var btn=document.getElementById("dmToggle");if(btn)btn.innerHTML=next==="dark"?"☀️ Light":"🌙 Dark";}
-document.addEventListener("DOMContentLoaded",function(){var t=document.documentElement.getAttribute("data-theme"),btn=document.getElementById("dmToggle");if(btn)btn.innerHTML=t==="dark"?"☀️ Light":"🌙 Dark";});
-</script>
+
+<script src="../js/header.js"></script>
 </body>
 </html>
