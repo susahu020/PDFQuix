@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Excel to PDF — PDFQuick</title>
+  <meta name="description" content="Convert Excel spreadsheets (.xlsx, .xls, .csv) to PDF online for free. No signup, no uploads to servers."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <style>
+    .sheet-selector {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .sheet-pill {
+      padding: 6px 14px; border-radius: 99px; border: 1.5px solid var(--border);
+      font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s;
+      background: var(--white); color: var(--text-secondary);
+    }
+    .sheet-pill:hover { border-color: var(--red); color: var(--red); }
+    .sheet-pill.selected { border-color: var(--red); background: var(--red-light); color: var(--red); }
+    .excel-preview {
+      overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-lg);
+      max-height: 360px; background: var(--white); margin-top: 20px;
+    }
+    .excel-table {
+      border-collapse: collapse; font-size: 13px; min-width: 100%;
+    }
+    .excel-table th {
+      background: var(--bg); padding: 8px 14px; text-align: left; font-weight: 600;
+      border-bottom: 2px solid var(--border); border-right: 1px solid var(--border);
+      white-space: nowrap; color: var(--text-secondary); position: sticky; top: 0; z-index: 1;
+    }
+    .excel-table td {
+      padding: 7px 14px; border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border); white-space: nowrap;
+    }
+    .excel-table tr:last-child td { border-bottom: none; }
+    .excel-table tr:hover td { background: var(--bg); }
+    .row-num { color: var(--text-muted); font-size: 11px; background: var(--bg) !important; }
+    [data-theme="dark"] .excel-preview { background: var(--dm-surface); border-color: var(--dm-border); }
+    [data-theme="dark"] .excel-table th { background: var(--dm-surface2); color: var(--dm-text-secondary); border-color: var(--dm-border); }
+    [data-theme="dark"] .excel-table td { border-color: var(--dm-border); color: var(--dm-text-primary); }
+    [data-theme="dark"] .excel-table tr:hover td { background: var(--dm-surface2); }
+    [data-theme="dark"] .sheet-pill { background: var(--dm-surface); border-color: var(--dm-border); color: var(--dm-text-secondary); }
+    [data-theme="dark"] .sheet-pill.selected { background: rgba(230,57,70,.15); color: #f87171; border-color: var(--red); }
+  </style>
+</head>
+<body>
+<header class="header">
+  <div class="container header-inner">
+    <a href="../index.html" class="logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="8" fill="#E63946"/>
+        <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
+        <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
+      </svg>
+      PDFQuick
+    </a>
+    <nav class="nav">
+      <a href="compress.html">Compress</a>
+      <a href="merge.html">Merge</a>
+      <a href="esign.html">e-Sign</a>
+      <a href="../about.html">About</a>
+      <button class="dm-toggle" id="dmToggle" onclick="toggleDarkMode()">🌙 Dark</button>
+    </nav>
+  </div>
+</header>
+
+<section class="tool-page-hero">
+  <div class="container">
+    <a href="../index.html" class="back-link">← All tools</a>
+    <h1>Excel to PDF</h1>
+    <p>Convert Excel spreadsheets and CSV files to a clean, printable PDF. Choose which sheets to include.</p>
+  </div>
+</section>
+
+<section class="tool-page-body">
+  <div class="container">
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.ods"/>
+      <div class="dropzone-icon">📊</div>
+      <h3>Drop your spreadsheet here</h3>
+      <p>.xlsx · .xls · .csv · .ods supported</p>
+      <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Choose file</button>
+    </div>
+
+    <div id="editorWrap" style="display:none; margin-top:24px;">
+      <div class="options-panel">
+        <h3>Sheets to include</h3>
+        <div class="sheet-selector" id="sheetSelector"></div>
+
+        <h3 style="margin-top:16px;">PDF settings</h3>
+        <div class="option-row">
+          <span class="option-label">Orientation</span>
+          <select class="option-select" id="orientation">
+            <option value="landscape">Landscape (wider tables)</option>
+            <option value="portrait">Portrait</option>
+          </select>
+        </div>
+        <div class="option-row">
+          <span class="option-label">Font size</span>
+          <select class="option-select" id="fontSize">
+            <option value="9">Small (9pt)</option>
+            <option value="10" selected>Medium (10pt)</option>
+            <option value="12">Large (12pt)</option>
+          </select>
+        </div>
+        <div class="option-row">
+          <span class="option-label">Include header</span>
+          <select class="option-select" id="includeHeader">
+            <option value="yes">Yes — bold column headers</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+        <div class="option-row">
+          <span class="option-label">Page numbers</span>
+          <select class="option-select" id="pageNums">
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div id="previewWrap" style="margin-top:20px;">
+        <h3 style="font-size:15px;font-weight:600;margin-bottom:8px;">Preview — <span id="previewSheetName"></span></h3>
+        <div class="excel-preview" id="excelPreview"></div>
+      </div>
+
+      <div class="action-bar" style="margin-top:24px;">
+        <button class="btn-action" onclick="convertToPDF()">📄 Convert to PDF</button>
+        <div class="progress-wrap" id="progressWrap" style="display:none;">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+          <div class="progress-label" id="progressLabel">Converting...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="result-box" id="resultBox">
+      <h3>✅ PDF ready!</h3>
+      <p id="resultDesc"></p>
+      <button class="btn-download" id="downloadBtn">⬇ Download PDF</button>
+      <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Convert another</button>
+    </div>
+
+    <div class="how-to">
+      <h2>How to convert Excel to PDF</h2>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><h4>Upload spreadsheet</h4><p>Drop your .xlsx, .xls, or .csv file.</p></div>
+        <div class="step"><div class="step-num">2</div><h4>Select sheets</h4><p>Pick which sheets to include in the PDF.</p></div>
+        <div class="step"><div class="step-num">3</div><h4>Configure</h4><p>Choose orientation, font size, and headers.</p></div>
+        <div class="step"><div class="step-num">4</div><h4>Download PDF</h4><p>Get a clean, printable PDF instantly.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <span class="logo-small">PDFQuick</span>
+    <p>Free PDF tools for everyone.</p>
+  </div>
+</footer>
+
+<script src="../js/utils.js"></script>
+<script>
+  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  let workbook = null, originalName = '', selectedSheets = new Set();
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  setupDropzone(dropzone, f => loadFile(f[0]));
+  fileInput.addEventListener('change', e => e.target.files[0] && loadFile(e.target.files[0]));
+
+  async function loadFile(file) {
+    clearError();
+    const allowed = ['.xlsx','.xls','.csv','.ods'];
+    if (!allowed.some(ext => file.name.toLowerCase().endsWith(ext))) {
+      showError('Please upload an Excel or CSV file.'); return;
+    }
+    originalName = file.name;
+    const buf = await readFileAsArrayBuffer(file);
+    workbook = XLSX.read(buf, { type: 'array' });
+    selectedSheets = new Set(workbook.SheetNames);
+    dropzone.style.display = 'none';
+    document.getElementById('editorWrap').style.display = 'block';
+    document.getElementById('resultBox').classList.remove('visible');
+    renderSheetPills();
+    renderPreview(workbook.SheetNames[0]);
+  }
+
+  function renderSheetPills() {
+    const sel = document.getElementById('sheetSelector');
+    sel.innerHTML = workbook.SheetNames.map(name =>
+      `<div class="sheet-pill selected" data-sheet="${escH(name)}" onclick="toggleSheet(this,'${escH(name)}')">${escH(name)}</div>`
+    ).join('');
+  }
+
+  function toggleSheet(el, name) {
+    if (selectedSheets.has(name) && selectedSheets.size === 1) return; // keep at least 1
+    if (selectedSheets.has(name)) { selectedSheets.delete(name); el.classList.remove('selected'); }
+    else { selectedSheets.add(name); el.classList.add('selected'); }
+    renderPreview([...selectedSheets][0] || workbook.SheetNames[0]);
+  }
+
+  function renderPreview(sheetName) {
+    document.getElementById('previewSheetName').textContent = sheetName;
+    const ws = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    const preview = rows.slice(0, 30);
+    const cols = Math.max(...preview.map(r => r.length), 0);
+    if (!preview.length) { document.getElementById('excelPreview').innerHTML = '<p style="padding:20px;color:var(--text-muted)">Empty sheet</p>'; return; }
+
+    const useHeader = document.getElementById('includeHeader').value === 'yes';
+    const header = useHeader ? preview[0] : null;
+    const data = useHeader ? preview.slice(1) : preview;
+
+    let html = '<table class="excel-table"><thead><tr><th class="row-num">#</th>';
+    if (header) { header.forEach(h => html += `<th>${escH(String(h))}</th>`); }
+    else { for(let c=0;c<cols;c++) html += `<th>${String.fromCharCode(65+c)}</th>`; }
+    html += '</tr></thead><tbody>';
+    data.forEach((row,ri) => {
+      html += `<tr><td class="row-num">${ri+1}</td>`;
+      for (let c=0;c<cols;c++) html += `<td>${escH(String(row[c]??''))}</td>`;
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('excelPreview').innerHTML = html;
+  }
+
+  function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  async function convertToPDF() {
+    clearError();
+    if (!selectedSheets.size) { showError('Select at least one sheet.'); return; }
+    document.getElementById('progressWrap').style.display = 'block';
+    setProgress(10, 'Creating PDF…');
+
+    try {
+      const isLandscape = document.getElementById('orientation').value === 'landscape';
+      const fontSize = parseInt(document.getElementById('fontSize').value);
+      const useHeader = document.getElementById('includeHeader').value === 'yes';
+      const addPageNums = document.getElementById('pageNums').value === 'yes';
+
+      const pdfDoc = await PDFDocument.create();
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+      const pageW = isLandscape ? 841.89 : 595.28; // A4
+      const pageH = isLandscape ? 595.28 : 841.89;
+      const margin = 36;
+      const lineH = fontSize * 1.6;
+      const headerH = fontSize * 2;
+
+      const sheetsToConvert = workbook.SheetNames.filter(n => selectedSheets.has(n));
+      let totalPages = 0;
+
+      setProgress(20, 'Rendering sheets…');
+      for (let si = 0; si < sheetsToConvert.length; si++) {
+        const sheetName = sheetsToConvert[si];
+        const ws = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        if (!rows.length) continue;
+
+        const headerRow = useHeader ? rows[0] : null;
+        const dataRows = useHeader ? rows.slice(1) : rows;
+        const cols = Math.max(...rows.map(r => r.length), 0);
+        const colW = Math.min((pageW - margin * 2) / Math.max(cols, 1), 140);
+
+        let y = pageH - margin;
+        let page = pdfDoc.addPage([pageW, pageH]);
+        totalPages++;
+
+        // Sheet title
+        page.drawText(sheetName, { x: margin, y, font: boldFont, size: fontSize + 2, color: rgb(0.1,0.1,0.1) });
+        y -= lineH * 1.5;
+
+        // Header row
+        if (headerRow) {
+          headerRow.forEach((cell, ci) => {
+            const x = margin + ci * colW;
+            if (x + colW > pageW - margin) return;
+            page.drawRectangle({ x, y: y - headerH + 4, width: colW, height: headerH, color: rgb(0.94,0.94,0.97) });
+            page.drawText(String(cell).substring(0,20), { x: x+4, y: y-2, font: boldFont, size: fontSize, color: rgb(0.1,0.1,0.1), maxWidth: colW-8 });
+          });
+          y -= headerH;
+        }
+
+        // Data rows
+        for (const row of dataRows) {
+          if (y < margin + lineH) {
+            if (addPageNums) {
+              page.drawText(`Page ${totalPages}`, { x: pageW/2-20, y: margin-16, font, size: 8, color: rgb(0.5,0.5,0.5) });
+            }
+            page = pdfDoc.addPage([pageW, pageH]);
+            totalPages++;
+            y = pageH - margin;
+          }
+          row.forEach((cell, ci) => {
+            const x = margin + ci * colW;
+            if (x + colW > pageW - margin) return;
+            const text = String(cell ?? '').substring(0, 22);
+            page.drawText(text, { x: x+4, y, font, size: fontSize, color: rgb(0.15,0.15,0.15), maxWidth: colW-8 });
+          });
+          // row line
+          page.drawLine({ start:{x:margin, y:y-4}, end:{x:pageW-margin, y:y-4}, thickness:.3, color:rgb(0.85,0.85,0.85) });
+          y -= lineH;
+        }
+        if (addPageNums) {
+          page.drawText(`Page ${totalPages}`, { x: pageW/2-20, y: margin-16, font, size: 8, color: rgb(0.5,0.5,0.5) });
+        }
+        setProgress(20 + Math.round(((si+1)/sheetsToConvert.length) * 70), `Sheet ${si+1}/${sheetsToConvert.length}…`);
+      }
+
+      setProgress(95, 'Saving…');
+      const pdfBytes = await pdfDoc.save();
+      setProgress(100, 'Done!');
+
+      const outName = originalName.replace(/\.(xlsx|xls|csv|ods)$/i, '.pdf');
+      document.getElementById('resultDesc').textContent =
+        `Converted ${sheetsToConvert.length} sheet${sheetsToConvert.length>1?'s':''} into ${totalPages} page${totalPages>1?'s':''} (${formatBytes(pdfBytes.length)}).`;
+      document.getElementById('downloadBtn').onclick = () => downloadFile(pdfBytes, outName);
+      document.getElementById('resultBox').classList.add('visible');
+      document.getElementById('resultBox').scrollIntoView({ behavior:'smooth', block:'nearest' });
+
+    } catch(err) {
+      showError('Error: ' + err.message);
+    } finally {
+      document.getElementById('progressWrap').style.display = 'none';
+    }
+  }
+
+  function resetTool() {
+    workbook = null; selectedSheets = new Set();
+    dropzone.style.display = 'block';
+    document.getElementById('editorWrap').style.display = 'none';
+    document.getElementById('resultBox').classList.remove('visible');
+    clearError();
+  }
+
+  document.getElementById('includeHeader').addEventListener('change', () => {
+    const first = [...selectedSheets][0] || workbook?.SheetNames[0];
+    if (first) renderPreview(first);
+  });
+</script>
+<script>
+(function(){var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.setAttribute("data-theme",t);})();
+function toggleDarkMode(){var cur=document.documentElement.getAttribute("data-theme"),next=cur==="dark"?"light":"dark";localStorage.setItem("pdfquick-theme",next);document.documentElement.setAttribute("data-theme",next);document.body.setAttribute("data-theme",next);var btn=document.getElementById("dmToggle");if(btn)btn.innerHTML=next==="dark"?"☀️ Light":"🌙 Dark";}
+document.addEventListener("DOMContentLoaded",function(){var t=document.documentElement.getAttribute("data-theme"),btn=document.getElementById("dmToggle");if(btn)btn.innerHTML=t==="dark"?"☀️ Light":"🌙 Dark";});
+</script>
+</body>
+</html>

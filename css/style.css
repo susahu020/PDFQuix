@@ -378,3 +378,73 @@ a { text-decoration: none; color: inherit; }
 
 /* Hidden card (search filter) */
 .tool-card.hidden { display: none; }
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+:root {
+  --dm-bg:            #0f1117;
+  --dm-surface:       #1a1d27;
+  --dm-surface2:      #22263a;
+  --dm-border:        #2e3347;
+  --dm-text-primary:  #f1f5f9;
+  --dm-text-secondary:#94a3b8;
+  --dm-text-muted:    #64748b;
+}
+
+[data-theme="dark"] {
+  background: var(--dm-bg) !important;
+  color: var(--dm-text-primary) !important;
+}
+[data-theme="dark"] body { background: var(--dm-bg); color: var(--dm-text-primary); }
+[data-theme="dark"] .header { background: var(--dm-surface); border-color: var(--dm-border); }
+[data-theme="dark"] .logo { color: var(--dm-text-primary); }
+[data-theme="dark"] .hero { background: var(--dm-surface); border-color: var(--dm-border); }
+[data-theme="dark"] .tool-card { background: var(--dm-surface); border-color: var(--dm-border); }
+[data-theme="dark"] .tool-card h2 { color: var(--dm-text-primary); }
+[data-theme="dark"] .tool-card p  { color: var(--dm-text-secondary); }
+[data-theme="dark"] .tool-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+[data-theme="dark"] .dropzone { background: var(--dm-surface); border-color: var(--dm-border); }
+[data-theme="dark"] .dropzone h3 { color: var(--dm-text-primary); }
+[data-theme="dark"] .dropzone p  { color: var(--dm-text-secondary); }
+[data-theme="dark"] .dropzone:hover { background: var(--dm-surface2); border-color: var(--red); }
+[data-theme="dark"] .options-panel { background: var(--dm-surface); border-color: var(--dm-border); }
+[data-theme="dark"] .options-panel h3 { color: var(--dm-text-primary); }
+[data-theme="dark"] .option-label { color: var(--dm-text-primary); }
+[data-theme="dark"] .option-select { background: var(--dm-surface2); border-color: var(--dm-border); color: var(--dm-text-primary); }
+[data-theme="dark"] .file-item { background: var(--dm-surface); border-color: var(--dm-border); }
+[data-theme="dark"] .file-item-name { color: var(--dm-text-primary); }
+[data-theme="dark"] .file-item-size { color: var(--dm-text-muted); }
+[data-theme="dark"] .step { background: var(--dm-surface); border-color: var(--dm-border); }
+[data-theme="dark"] .step h4 { color: var(--dm-text-primary); }
+[data-theme="dark"] .step p  { color: var(--dm-text-secondary); }
+[data-theme="dark"] .back-link { color: var(--dm-text-secondary); }
+[data-theme="dark"] .back-link:hover { color: var(--dm-text-primary); }
+[data-theme="dark"] .tool-page-hero { background: var(--dm-surface); border-color: var(--dm-border); }
+[data-theme="dark"] .tool-page-hero h1 { color: var(--dm-text-primary); }
+[data-theme="dark"] .tool-page-hero p  { color: var(--dm-text-secondary); }
+[data-theme="dark"] .how-to h2 { color: var(--dm-text-primary); }
+[data-theme="dark"] .footer p  { color: var(--dm-text-muted); }
+[data-theme="dark"] .footer .logo-small { color: var(--dm-text-primary); }
+[data-theme="dark"] .hero-badge { background: rgba(230,57,70,.15); color: #f87171; }
+[data-theme="dark"] .trust-section { background: var(--dm-surface); border-color: var(--dm-border); }
+[data-theme="dark"] .trust-item h3 { color: var(--dm-text-primary); }
+[data-theme="dark"] .trust-item p  { color: var(--dm-text-secondary); }
+[data-theme="dark"] .phase-label { color: var(--dm-text-muted); border-color: var(--dm-border); }
+[data-theme="dark"] .phase-label span { background: var(--dm-surface2); border-color: var(--dm-border); }
+[data-theme="dark"] .search-bar input { background: var(--dm-surface); border-color: var(--dm-border); color: var(--dm-text-primary); }
+[data-theme="dark"] .hero h1 { color: var(--dm-text-primary); }
+[data-theme="dark"] .hero-sub { color: var(--dm-text-secondary); }
+
+/* Dark mode toggle button */
+.dm-toggle {
+  background: none; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); padding: 6px 12px;
+  cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; gap: 6px;
+  color: var(--text-secondary); transition: all .15s;
+  font-family: 'Inter', sans-serif;
+}
+.dm-toggle:hover { border-color: var(--red); color: var(--red); }
+[data-theme="dark"] .dm-toggle { border-color: var(--dm-border); color: var(--dm-text-secondary); }
+[data-theme="dark"] .dm-toggle:hover { border-color: var(--red); color: #f87171; }
