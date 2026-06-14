@@ -84,6 +84,7 @@
       <a href="tools/batch.html">Batch</a>
       <a href="about.html">About</a>
       <button class="dm-toggle" id="dmToggle" onclick="toggleDarkMode()" title="Toggle dark mode">🌙 Dark</button>
+      <button class="dm-toggle" id="dmToggle" onclick="toggleDarkMode()" title="Toggle dark mode">🌙 Dark</button>
     </nav>
   </div>
 </header>
@@ -465,6 +466,26 @@ document.addEventListener('keydown', e => {
     document.getElementById('searchInput').focus();
   }
 });
+
+// ── Dark mode ──────────────────────────────────────────
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.body.setAttribute('data-theme', theme);
+  const btn = document.getElementById('dmToggle');
+  if (btn) btn.innerHTML = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+}
+function toggleDarkMode() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('pdfquick-theme', next);
+  applyTheme(next);
+}
+// Apply saved preference immediately
+(function() {
+  const saved = localStorage.getItem('pdfquick-theme') ||
+    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  applyTheme(saved);
+})();
 
 // ── Dark mode ──────────────────────────────────────────
 function applyTheme(theme) {
