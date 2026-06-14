@@ -510,5 +510,10 @@ function resetTool() {
   clearError();
 }
 </script>
+<script>
+(function(){var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.setAttribute("data-theme",t);})();
+function toggleDarkMode(){var cur=document.documentElement.getAttribute("data-theme"),next=cur==="dark"?"light":"dark";localStorage.setItem("pdfquick-theme",next);document.documentElement.setAttribute("data-theme",next);document.body.setAttribute("data-theme",next);var btn=document.getElementById("dmToggle");if(btn)btn.innerHTML=next==="dark"?"☀️ Light":"🌙 Dark";}
+document.addEventListener("DOMContentLoaded",function(){var t=document.documentElement.getAttribute("data-theme"),btn=document.getElementById("dmToggle");if(btn)btn.innerHTML=t==="dark"?"☀️ Light":"🌙 Dark";});
+</script>
 </body>
 </html>

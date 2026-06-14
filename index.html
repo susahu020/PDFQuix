@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PDFQuick — 19 Free PDF Tools Online. No Signup.</title>
-  <meta name="description" content="19 completely free PDF tools: compress, merge, split, sign, OCR, fill forms, reorder, redact, convert and more. No account, no limits, no uploads to servers."/>
+  <title>PDFQuick — 22 Free PDF Tools Online. No Signup.</title>
+  <meta name="description" content="22 completely free PDF tools: compress, merge, split, sign, OCR, fill forms, reorder, redact, convert and more. No account, no limits, no uploads to servers."/>
   <meta name="keywords" content="free pdf tools, compress pdf, merge pdf, split pdf, pdf to word, sign pdf, ocr pdf, pdf online, no signup"/>
-  <meta property="og:title" content="PDFQuick — 19 Free PDF Tools Online"/>
+  <meta property="og:title" content="PDFQuick — 22 Free PDF Tools Online"/>
   <meta property="og:description" content="Compress, merge, split, sign, OCR and more. All free, all in your browser."/>
   <meta property="og:type" content="website"/>
   <link rel="stylesheet" href="css/style.css"/>
@@ -83,6 +83,7 @@
       <a href="tools/ocr.html">OCR</a>
       <a href="tools/batch.html">Batch</a>
       <a href="about.html">About</a>
+      <button class="dm-toggle" id="dmToggle" onclick="toggleDarkMode()" title="Toggle dark mode">🌙 Dark</button>
     </nav>
   </div>
 </header>
@@ -98,7 +99,7 @@
       <input type="text" id="searchInput" placeholder="Search tools… e.g. compress, sign, redact" oninput="filterTools(this.value)" autocomplete="off"/>
     </div>
     <div class="hero-stats">
-      <div class="hero-stat"><div class="n">19</div><div class="l">Free tools</div></div>
+      <div class="hero-stat"><div class="n">22</div><div class="l">Free tools</div></div>
       <div class="hero-stat"><div class="n">0</div><div class="l">Files uploaded</div></div>
       <div class="hero-stat"><div class="n">∞</div><div class="l">No limits</div></div>
       <div class="hero-stat"><div class="n">0₹</div><div class="l">Cost forever</div></div>
@@ -305,6 +306,42 @@
 
     </div>
 
+    <!-- Phase 4: New High-Impact Tools -->
+    <div class="phase-label">New tools <span>3 tools</span></div>
+    <div class="tools-grid">
+
+      <a href="tools/annotate.html" class="tool-card" data-tags="annotate highlight underline strikethrough draw sticky note comment markup">
+        <span class="new-badge">New</span>
+        <div class="tool-icon" style="background:#fef9c3;color:#92400e;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </div>
+        <h2>Annotate PDF</h2>
+        <p>Highlight text in yellow, green or red. Draw freehand. Add sticky notes. Underline or strikethrough.</p>
+        <span class="use-tool">Use tool →</span>
+      </a>
+
+      <a href="tools/delete-pages.html" class="tool-card" data-tags="delete remove pages page select specific clean trim">
+        <span class="new-badge">New</span>
+        <div class="tool-icon" style="background:#fee2e2;color:#991b1b;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+        </div>
+        <h2>Delete PDF Pages</h2>
+        <p>Preview all pages as thumbnails, click to select the ones to remove, download the clean PDF.</p>
+        <span class="use-tool">Use tool →</span>
+      </a>
+
+      <a href="tools/crop.html" class="tool-card" data-tags="crop trim margins cut region area whitespace border resize">
+        <span class="new-badge">New</span>
+        <div class="tool-icon" style="background:#ede9fe;color:#5b21b6;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 2 6 8 2 8"/><polyline points="18 22 18 16 22 16"/><path d="M2 14h8v8"/><path d="M22 10h-8V2"/></svg>
+        </div>
+        <h2>Crop PDF</h2>
+        <p>Trim white margins or draw a custom crop area. Apply to all pages or just one. Preview before saving.</p>
+        <span class="use-tool">Use tool →</span>
+      </a>
+
+    </div>
+
     <div class="no-results" id="noResults">
       No tools match "<span id="searchTerm"></span>" — try: compress, sign, ocr, merge, rotate
     </div>
@@ -368,6 +405,26 @@ document.addEventListener('keydown', e => {
     document.getElementById('searchInput').focus();
   }
 });
+
+// ── Dark mode ──────────────────────────────────────────
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.body.setAttribute('data-theme', theme);
+  const btn = document.getElementById('dmToggle');
+  if (btn) btn.innerHTML = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+}
+function toggleDarkMode() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('pdfquick-theme', next);
+  applyTheme(next);
+}
+// Apply saved preference immediately
+(function() {
+  const saved = localStorage.getItem('pdfquick-theme') ||
+    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  applyTheme(saved);
+})();
 </script>
 </body>
 </html>
