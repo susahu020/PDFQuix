@@ -3,65 +3,58 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>About — PDFQuick</title>
-  <meta name="description" content="About PDFQuick — free PDF tools that run entirely in your browser. No signup, no file uploads, no limits."/>
+  <title>About PDFQuick — 19 Free Browser-Based PDF Tools</title>
+  <meta name="description" content="PDFQuick gives you 19 professional PDF tools that run entirely in your browser. No signup, no file uploads, no limits — free forever."/>
+  <meta name="robots" content="index, follow"/>
   <link rel="stylesheet" href="css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
   <style>
-    .about-hero {
-      background: var(--white); border-bottom: 1px solid var(--border);
-      padding: 64px 0; text-align: center;
+    .about-hero { background:var(--white); border-bottom:1px solid var(--border); padding:64px 0; text-align:center; }
+    .about-hero h1 { font-size:36px; font-weight:600; margin-bottom:16px; }
+    .about-hero p  { font-size:18px; color:var(--text-secondary); max-width:560px; margin:0 auto; line-height:1.7; }
+    .about-body { max-width:860px; margin:0 auto; padding:56px 24px 80px; }
+    .about-body h2 { font-size:22px; font-weight:600; margin:48px 0 14px; }
+    .about-body p  { font-size:15px; color:var(--text-secondary); line-height:1.8; margin-bottom:14px; }
+    .values-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:16px; margin:24px 0; }
+    .value-card { background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); padding:20px; }
+    .value-card .icon { font-size:28px; margin-bottom:10px; }
+    .value-card h3 { font-size:15px; font-weight:600; margin-bottom:6px; }
+    .value-card p  { font-size:13px; color:var(--text-secondary); margin:0; line-height:1.6; }
+    .tools-section-grid {
+      display:grid; grid-template-columns:repeat(3,1fr); gap:0;
+      border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; margin:20px 0;
     }
-    .about-hero h1 { font-size: 36px; font-weight: 600; margin-bottom: 16px; }
-    .about-hero p  { font-size: 18px; color: var(--text-secondary); max-width: 560px; margin: 0 auto; line-height: 1.7; }
-    .about-body { max-width: 760px; margin: 0 auto; padding: 56px 24px 80px; }
-    .about-body h2 { font-size: 22px; font-weight: 600; margin: 48px 0 14px; }
-    .about-body p  { font-size: 15px; color: var(--text-secondary); line-height: 1.8; margin-bottom: 14px; }
-    .values-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 24px 0; }
-    .value-card {
-      background: var(--white); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 20px;
+    .tool-category { padding:20px 16px; border-right:1px solid var(--border); }
+    .tool-category:last-child { border-right:none; }
+    .tool-category h3 { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text-muted); margin-bottom:12px; }
+    .tool-category ul { list-style:none; display:flex; flex-direction:column; gap:6px; }
+    .tool-category ul li { font-size:13px; display:flex; align-items:center; gap:6px; color:var(--text-secondary); }
+    .tool-category ul a { font-size:13px; color:var(--text-secondary); text-decoration:none; display:flex; align-items:center; gap:6px; }
+    .tool-category ul a:hover { color:var(--red); }
+    .stat-row { display:flex; gap:32px; flex-wrap:wrap; margin:24px 0; }
+    .stat-item { text-align:center; }
+    .stat-item .num { font-size:32px; font-weight:600; color:var(--red); }
+    .stat-item .lbl { font-size:13px; color:var(--text-secondary); margin-top:2px; }
+    .tech-stack { display:flex; flex-wrap:wrap; gap:10px; margin:16px 0; }
+    .tech-pill {
+      background:var(--white); border:1px solid var(--border); border-radius:var(--radius-sm);
+      padding:8px 14px; font-size:13px; font-weight:500; display:flex; align-items:center; gap:6px;
     }
-    .value-card .icon { font-size: 28px; margin-bottom: 10px; }
-    .value-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
-    .value-card p  { font-size: 13px; color: var(--text-secondary); margin: 0; line-height: 1.6; }
-    .tools-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; margin: 16px 0; }
-    .tool-pill {
-      background: var(--white); border: 1px solid var(--border);
-      border-radius: var(--radius-md); padding: 10px 14px;
-      font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px;
-    }
-    .contact-box {
-      background: var(--white); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 28px; margin-top: 24px; text-align: center;
-    }
-    .contact-box h3 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-    .contact-box p  { font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; }
-    .stat-row { display: flex; gap: 32px; flex-wrap: wrap; margin: 24px 0; }
-    .stat-item { text-align: center; }
-    .stat-item .num { font-size: 32px; font-weight: 600; color: var(--red); }
-    .stat-item .lbl { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+    @media (max-width:640px) { .tools-section-grid { grid-template-columns:1fr; } .tool-category { border-right:none; border-bottom:1px solid var(--border); } }
   </style>
+<script>
+(function(){
+  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
 </head>
 <body>
-
-<header class="header">
-  <div class="container header-inner">
-    <a href="index.html" class="logo">
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-        <rect width="28" height="28" rx="8" fill="#E63946"/>
-        <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
-        <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
-      </svg>
-      PDFQuick
-    </a>
-  </div>
-</header>
 
 <div class="about-hero">
   <div class="container">
     <h1>Built for everyone. Free forever.</h1>
-    <p>PDFQuick gives you professional-grade PDF tools without the cost, the account, or the waiting. Everything runs in your browser — your files never leave your device.</p>
+    <p>PDFQuick gives you 19 professional-grade PDF tools without the cost, the account, or the waiting. Everything runs in your browser — your files never leave your device.</p>
   </div>
 </div>
 
@@ -71,88 +64,100 @@
     <div class="stat-item"><div class="num">19</div><div class="lbl">Free tools</div></div>
     <div class="stat-item"><div class="num">0</div><div class="lbl">Files uploaded to servers</div></div>
     <div class="stat-item"><div class="num">100%</div><div class="lbl">In-browser processing</div></div>
-    <div class="stat-item"><div class="num">∞</div><div class="lbl">Free uses</div></div>
+    <div class="stat-item"><div class="num">∞</div><div class="lbl">Free uses, always</div></div>
   </div>
 
   <h2>Why we built this</h2>
-  <p>Most PDF tools online make you sign up, limit your file size, put watermarks on your output, or charge you after a "free trial." We think that's frustrating — especially when you just need to compress one file or merge two documents quickly.</p>
+  <p>Most PDF tools online make you sign up, limit your file size, put watermarks on your output, or charge you after a "free trial." That's frustrating — especially when you just need to compress one file or merge two documents quickly.</p>
   <p>PDFQuick is different. Every tool is completely free, with no account required and no hidden limits. We process everything in your browser using modern JavaScript libraries — so your files never leave your device and we never see your documents.</p>
 
   <h2>Our values</h2>
   <div class="values-grid">
-    <div class="value-card">
-      <div class="icon">🔒</div>
-      <h3>Privacy first</h3>
-      <p>Files process in your browser. We have zero access to your documents — ever.</p>
-    </div>
-    <div class="value-card">
-      <div class="icon">✅</div>
-      <h3>Genuinely free</h3>
-      <p>No fake free tier. No watermarks. No "upgrade to download." Everything works.</p>
-    </div>
-    <div class="value-card">
-      <div class="icon">⚡</div>
-      <h3>Fast by design</h3>
-      <p>No upload time. Most tools run in under 5 seconds on your own hardware.</p>
-    </div>
-    <div class="value-card">
-      <div class="icon">🌍</div>
-      <h3>Accessible</h3>
-      <p>Works on any device, any browser. No app to install. No account to create.</p>
-    </div>
+    <div class="value-card"><div class="icon">🔒</div><h3>Privacy first</h3><p>Files process in your browser. We have zero access to your documents — ever.</p></div>
+    <div class="value-card"><div class="icon">✅</div><h3>Genuinely free</h3><p>No fake free tier. No watermarks. No "upgrade to download." Everything works.</p></div>
+    <div class="value-card"><div class="icon">⚡</div><h3>Fast by design</h3><p>No upload time. Most tools run in under 5 seconds on your own hardware.</p></div>
+    <div class="value-card"><div class="icon">🌍</div><h3>Accessible</h3><p>Works on any device, any browser. No app to install. No account to create.</p></div>
   </div>
 
   <h2>All 19 tools</h2>
-  <div class="tools-list">
-    <div class="tool-pill">📦 Compress PDF</div>
-    <div class="tool-pill">📑 Merge PDF</div>
-    <div class="tool-pill">✂️ Split PDF</div>
-    <div class="tool-pill">📝 PDF to Word</div>
-    <div class="tool-pill">📄 Word to PDF</div>
-    <div class="tool-pill">🖼️ PDF to JPG</div>
-    <div class="tool-pill">🖼️ JPG to PDF</div>
-    <div class="tool-pill">🔄 Rotate PDF</div>
-    <div class="tool-pill">🔐 Protect PDF</div>
-    <div class="tool-pill">🔓 Unlock PDF</div>
-    <div class="tool-pill">💧 Watermark PDF</div>
-    <div class="tool-pill">🔢 Page Numbers</div>
-    <div class="tool-pill">✍️ e-Sign PDF</div>
-    <div class="tool-pill">📋 Fill Forms</div>
-    <div class="tool-pill">🔍 OCR / Scan</div>
-    <div class="tool-pill">⚡ Batch Process</div>
-    <div class="tool-pill">📊 PDF to PowerPoint</div>
-    <div class="tool-pill">📑 Reorder Pages</div>
-    <div class="tool-pill">⬛ Redact PDF</div>
+  <p>Every tool below is free, browser-based, and requires no account. Click any tool to use it instantly.</p>
+
+  <div class="tools-section-grid">
+    <div class="tool-category">
+      <h3>📦 Optimise &amp; Organise</h3>
+      <ul>
+        <li><a href="tools/compress.html">📦 Compress PDF</a></li>
+        <li><a href="tools/merge.html">📑 Merge PDF</a></li>
+        <li><a href="tools/split.html">✂️ Split PDF</a></li>
+        <li><a href="tools/rotate.html">🔄 Rotate PDF</a></li>
+        <li><a href="tools/reorder.html">🔀 Reorder Pages</a></li>
+        <li><a href="tools/delete-pages.html">🗑️ Delete Pages</a></li>
+        <li><a href="tools/page-numbers.html">🔢 Page Numbers</a></li>
+        <li><a href="tools/batch.html">⚙️ Batch Process</a></li>
+      </ul>
+    </div>
+    <div class="tool-category">
+      <h3>🔄 Convert</h3>
+      <ul>
+        <li><a href="tools/pdf-to-word.html">📝 PDF to Word</a></li>
+        <li><a href="tools/word-to-pdf.html">📄 Word to PDF</a></li>
+        <li><a href="tools/pdf-to-jpg.html">🖼️ PDF to JPG</a></li>
+        <li><a href="tools/jpg-to-pdf.html">📷 JPG to PDF</a></li>
+        <li><a href="tools/pdf-to-excel.html">📊 PDF to Excel</a></li>
+        <li><a href="tools/excel-to-pdf.html">📊 Excel to PDF</a></li>
+        <li><a href="tools/pdf-to-ppt.html">📑 PDF to PowerPoint</a></li>
+        <li><a href="tools/html-to-pdf.html">💻 HTML to PDF</a></li>
+      </ul>
+    </div>
+    <div class="tool-category">
+      <h3>🔒 Edit, Sign &amp; Secure</h3>
+      <ul>
+        <li><a href="tools/esign.html">✍️ e-Sign PDF</a></li>
+        <li><a href="tools/fill-forms.html">📋 Fill Forms</a></li>
+        <li><a href="tools/protect.html">🔐 Protect PDF</a></li>
+        <li><a href="tools/unlock.html">🔓 Unlock PDF</a></li>
+        <li><a href="tools/watermark.html">💧 Watermark PDF</a></li>
+        <li><a href="tools/redact.html">⚫ Redact PDF</a></li>
+        <li><a href="tools/ocr.html">👁️ OCR / Scan</a></li>
+        <li><a href="tools/annotate.html">🖊️ Annotate PDF</a></li>
+      </ul>
+    </div>
   </div>
+  <p style="font-size:13px; color:var(--text-muted);">Additional tools: <a href="tools/extract-text.html" style="color:var(--red)">Extract Text</a>, <a href="tools/compare.html" style="color:var(--red)">Compare PDFs</a>, <a href="tools/crop.html" style="color:var(--red)">Crop PDF</a>, <a href="tools/repair.html" style="color:var(--red)">Repair PDF</a></p>
 
   <h2>Technology</h2>
-  <p>PDFQuick is built with vanilla HTML, CSS, and JavaScript — no frameworks, no backend servers. We use these excellent open-source libraries:</p>
-  <ul style="padding-left:20px; margin-bottom:14px;">
-    <li style="font-size:15px; color:var(--text-secondary); line-height:1.8;"><strong>pdf-lib</strong> — create, modify, and save PDF files in the browser</li>
-    <li style="font-size:15px; color:var(--text-secondary); line-height:1.8;"><strong>pdf.js</strong> by Mozilla — render PDF pages to canvas for preview</li>
-    <li style="font-size:15px; color:var(--text-secondary); line-height:1.8;"><strong>Tesseract.js</strong> — OCR engine for extracting text from scanned PDFs</li>
-    <li style="font-size:15px; color:var(--text-secondary); line-height:1.8;"><strong>PptxGenJS</strong> — generate PowerPoint (.pptx) files</li>
-    <li style="font-size:15px; color:var(--text-secondary); line-height:1.8;"><strong>docx.js</strong> — generate Word (.docx) files</li>
-    <li style="font-size:15px; color:var(--text-secondary); line-height:1.8;"><strong>JSZip</strong> — create ZIP archives for batch downloads</li>
-    <li style="font-size:15px; color:var(--text-secondary); line-height:1.8;"><strong>mammoth.js</strong> — parse .docx Word files</li>
-  </ul>
+  <p>PDFQuick is built with vanilla HTML, CSS, and JavaScript — no frameworks, no backend servers. Your files are processed entirely on your machine using these excellent open-source libraries:</p>
+  <div class="tech-stack">
+    <span class="tech-pill">📄 pdf-lib</span>
+    <span class="tech-pill">👁️ pdf.js (Mozilla)</span>
+    <span class="tech-pill">🔍 Tesseract.js (OCR)</span>
+    <span class="tech-pill">📊 PptxGenJS</span>
+    <span class="tech-pill">📝 docx.js</span>
+    <span class="tech-pill">🗜️ JSZip</span>
+    <span class="tech-pill">📄 mammoth.js</span>
+  </div>
 
-  <div class="contact-box">
-    <h3>Get in touch</h3>
-    <p>Found a bug? Have a feature request? Want to say hi?</p>
-    <a href="mailto:hello@pdfquick.com" class="btn-action" style="display:inline-flex; align-items:center; gap:8px; text-decoration:none;">
-      ✉️ hello@pdfquick.com
-    </a>
+  <h2>How we make money</h2>
+  <p>PDFQuick is free to use and always will be. We display non-intrusive ads via Google AdSense to cover hosting and development costs. We do not sell your data (we don't have any). We do not have a paid tier or premium features. Every tool is genuinely free, forever.</p>
+  <p>If you use PDFQuick regularly and want to support us, the best thing you can do is tell someone about it — that helps more than anything.</p>
+
+  <div style="background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); padding:28px; margin-top:48px; text-align:center;">
+    <h3 style="font-size:18px; font-weight:600; margin-bottom:8px;">Get in touch</h3>
+    <p style="font-size:14px; color:var(--text-secondary); margin-bottom:20px;">Found a bug? Have a feature request? Want to say hi? We read every message.</p>
+    <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+      <a href="contact.html" class="btn-action" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;">
+        📬 Contact Us
+      </a>
+      <a href="mailto:hello@pdfquick.com" style="display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--text-secondary);text-decoration:none;">
+        ✉️ hello@pdfquick.com
+      </a>
+    </div>
   </div>
 
 </div>
 
-<footer class="footer">
-  <div class="container footer-inner">
-    <span class="logo-small">PDFQuick</span>
-    <p>Free PDF tools for everyone. · <a href="privacy.html" style="color:var(--text-muted)">Privacy</a> · <a href="about.html" style="color:var(--text-muted)">About</a></p>
-  </div>
-</footer>
-
+<script src="js/utils.js"></script>
+<script src="js/header.js"></script>
+<script src="js/footer.js"></script>
 </body>
 </html>
