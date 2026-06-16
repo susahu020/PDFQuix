@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>How to Make a Scanned PDF Searchable with OCR — PDFQuick</title>
+  <meta name="description" content="Scanned PDFs are just images — you can't search, copy, or edit them. OCR converts them to real text in one click. Here's how."/>
+  <meta name="keywords" content="ocr pdf, make pdf searchable, scanned pdf to text, ocr online free, searchable pdf"/>
+  <meta name="robots" content="index, follow"/>
+  <meta property="og:title" content="How to Make a Scanned PDF Searchable with OCR"/>
+  <meta property="og:description" content="Scanned PDFs are just images — you can't search, copy, or edit them. OCR converts them to real text in one click. Here's how."/>
+  <meta property="og:type" content="article"/>
+  <meta property="article:published_time" content="2025-04-22"/>
+  <meta property="article:author" content="PDFQuick Team"/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    .article-hero{background:var(--white);border-bottom:1px solid var(--border);padding:56px 0 40px}
+    .article-wrap{max-width:760px;margin:0 auto;padding:0 24px}
+    .article-breadcrumb{font-size:13px;color:var(--text-muted);margin-bottom:20px}
+    .article-breadcrumb a{color:var(--red);text-decoration:none}
+    .article-meta{display:flex;align-items:center;gap:16px;margin-top:20px;flex-wrap:wrap}
+    .article-meta span{font-size:13px;color:var(--text-muted)}
+    .article-tag{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--red);background:#fff0f1;padding:3px 10px;border-radius:99px}
+    .article-body{max-width:760px;margin:0 auto;padding:40px 24px 80px}
+    .article-body h2{font-size:22px;font-weight:600;margin:40px 0 12px}
+    .article-body h3{font-size:17px;font-weight:600;margin:28px 0 10px}
+    .article-body p{font-size:15px;color:var(--text-secondary);line-height:1.85;margin-bottom:16px}
+    .article-body ul,.article-body ol{padding-left:22px;margin-bottom:16px}
+    .article-body li{font-size:15px;color:var(--text-secondary);line-height:1.8;margin-bottom:6px}
+    .article-body strong{color:var(--text-primary)}
+    .tip-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius-md);padding:16px 20px;margin:24px 0}
+    .tip-box p{color:#15803d;margin:0;font-size:14px}
+    .warning-box{background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--radius-md);padding:16px 20px;margin:24px 0}
+    .warning-box p{color:#c2410c;margin:0;font-size:14px}
+    .info-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius-md);padding:16px 20px;margin:24px 0}
+    .info-box p{color:#1e40af;margin:0;font-size:14px}
+    .cta-inline{background:var(--white);border:1.5px solid var(--red);border-radius:var(--radius-lg);padding:24px 28px;margin:32px 0;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .cta-inline p{margin:0;font-size:15px;font-weight:500}
+    .table-wrap{overflow-x:auto;margin:20px 0}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th{background:var(--bg);font-weight:600;text-align:left;padding:10px 14px;border:1px solid var(--border)}
+    td{padding:10px 14px;border:1px solid var(--border);color:var(--text-secondary)}
+    .related-posts{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:12px}
+    .related-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;text-decoration:none;color:inherit;transition:box-shadow .15s}
+    .related-card:hover{box-shadow:var(--shadow-md)}
+    .related-card h4{font-size:14px;font-weight:600;margin-bottom:6px}
+    .related-card p{font-size:12px;color:var(--text-secondary);margin:0}
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"Article",
+    "headline":"How to Make a Scanned PDF Searchable with OCR",
+    "description":"Scanned PDFs are just images — you can't search, copy, or edit them. OCR converts them to real text in one click. Here's how.",
+    "author":{"@type":"Organization","name":"PDFQuick"},
+    "publisher":{"@type":"Organization","name":"PDFQuick","url":"https://pdfquick.com"},
+    "datePublished":"2025-04-22",
+    "dateModified":"2025-06-01"
+  }
+  </script>
+    <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"FAQPage",
+    "mainEntity":[
+      {"@type":"Question","name":"What is OCR?","acceptedAnswer":{"@type":"Answer","text":"OCR stands for Optical Character Recognition. It's a technology that analyses images of text and converts them into machine-readable characters you can search, copy, and edit."}},
+      {"@type":"Question","name":"How accurate is OCR?","acceptedAnswer":{"@type":"Answer","text":"On clean, clearly printed text at 150 DPI or higher, accuracy is typically 99%+. Handwriting, unusual fonts, or poor scan quality reduce accuracy."}},
+      {"@type":"Question","name":"Can OCR work on handwriting?","acceptedAnswer":{"@type":"Answer","text":"Modern OCR engines have limited handwriting support. Printed text gives much better results. For handwritten notes, accuracy varies widely."}}
+    ]
+  }
+  </script>
+<script>
+(function(){var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");document.documentElement.setAttribute("data-theme",t)})();
+</script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
+    {"@type":"ListItem","position":1,"name":"Home","item":"https://pdfquick.com/"},
+    {"@type":"ListItem","position":2,"name":"Blog","item":"https://pdfquick.com/blog.html"},
+    {"@type":"ListItem","position":3,"name":"How to Make a Scanned PDF Searchable with OCR","item":"https://pdfquick.com/blog/ocr-scanned-pdf.html"}
+  ]}
+  </script>
+</head>
+<body>
+<div class="article-hero">
+  <div class="article-wrap">
+    <div class="article-breadcrumb">
+      <a href="../index.html">Home</a> › <a href="../blog.html">Blog</a> › OCR PDF Guide
+    </div>
+    <span class="article-tag">👁️ How-To</span>
+    <h1 style="font-size:30px;font-weight:600;line-height:1.35;margin:14px 0 0">How to Make a Scanned PDF Searchable with OCR</h1>
+    <div class="article-meta">
+      <span>✍️ PDFQuick Team</span>
+      <span>📅 April 2025</span>
+      <span>⏱️ 6 min read</span>
+    </div>
+  </div>
+</div>
+<div class="article-body">
+
+  <p>Scanned PDFs are digital images, not text. You can read them on screen, but you can't search for a word, select text to copy, or convert them to Word. OCR (Optical Character Recognition) fixes all of that in one click.</p>
+
+  <div class="cta-inline">
+    <p>👁️ Try PDFQuick OCR PDF — free, no account needed</p>
+    <a href="../tools/ocr.html" class="btn-action" style="font-size:14px;padding:10px 20px;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:6px;border:none;cursor:pointer;font-family:'Inter',sans-serif;">Try it Free →</a>
+  </div>
+
+  <h2>How to know if your PDF is scanned</h2>
+  <p>Try selecting text in the PDF. If you can highlight individual words by clicking and dragging, the PDF contains real text. If clicking creates a selection box over the entire page (like selecting an image), it's a scanned PDF with no real text layer.</p>
+
+  <div class="info-box"><p>ℹ️ <strong>Another test:</strong> Press Ctrl+F (or Cmd+F on Mac) to search. If the search finds nothing even for words clearly visible on screen, the PDF is image-only and needs OCR.</p></div>
+
+  <h2>How OCR works</h2>
+  <p>OCR software analyses the shapes of letters and words in an image, compares them against known character patterns, and outputs the corresponding text. Modern OCR (like Tesseract, which PDFQuick uses) uses machine learning to recognise characters with high accuracy even in varied fonts.</p>
+  <p>The result is a PDF with two layers: the original image (which still looks the same) and an invisible text layer underneath, enabling search, copy, and text-to-speech.</p>
+
+  <h2>Step-by-step: OCR a scanned PDF</h2>
+  <ol>
+    <li>Go to <a href="../tools/ocr.html" style="color:var(--red)">PDFQuick → OCR PDF</a>.</li>
+    <li>Upload your scanned PDF.</li>
+    <li>Select the <strong>document language</strong> (English, Hindi, French, etc.) for best accuracy.</li>
+    <li>Click <strong>Run OCR</strong>. Processing time depends on page count and image quality.</li>
+    <li>Download the searchable PDF.</li>
+  </ol>
+
+  <div class="tip-box"><p>💡 <strong>Better scan = better OCR:</strong> If you control the scanning process, use 300 DPI, ensure good lighting, and scan straight (no tilt). This significantly improves OCR accuracy.</p></div>
+
+  <h2>OCR accuracy — what to expect</h2>
+  <div class="table-wrap">
+    <table>
+      <tr><th>Document type</th><th>Expected OCR accuracy</th></tr>
+      <tr><td>Printed text, clean scan, 300 DPI</td><td>98–99%</td></tr>
+      <tr><td>Printed text, good scan, 150 DPI</td><td>94–97%</td></tr>
+      <tr><td>Photocopied document</td><td>85–95%</td></tr>
+      <tr><td>Fax document</td><td>75–90%</td></tr>
+      <tr><td>Handwriting (printed style)</td><td>60–80%</td></tr>
+      <tr><td>Cursive handwriting</td><td>30–60%</td></tr>
+    </table>
+  </div>
+
+  <h2>After OCR: what you can do next</h2>
+  <ul>
+    <li><strong>Search the document</strong> — Ctrl+F now works on every page.</li>
+    <li><strong>Copy text</strong> — Select and copy any passage.</li>
+    <li><strong>Convert to Word</strong> — Use <a href="../tools/pdf-to-word.html" style="color:var(--red)">PDF to Word</a> for a fully editable document.</li>
+    <li><strong>Extract all text</strong> — Use <a href="../tools/extract-text.html" style="color:var(--red)">Extract Text</a> to get the full content as a .txt file.</li>
+    <li><strong>Screen readers</strong> — OCR-processed PDFs become accessible to visually impaired users.</li>
+  </ul>
+
+  <h2>Frequently asked questions</h2>
+  <h3>Can OCR work on PDFs in languages other than English?</h3>
+  <p>Yes. PDFQuick's OCR supports 100+ languages including Hindi, Arabic, Chinese, Japanese, French, German, and Spanish. Select the correct language before processing for best results.</p>
+  <h3>Does OCR alter the visual appearance of the PDF?</h3>
+  <p>No. The original scanned images remain unchanged. OCR adds an invisible text layer underneath.</p>
+  <h3>What if some pages are scanned and some have real text?</h3>
+  <p>PDFQuick applies OCR only to image-based pages and leaves existing text pages untouched.</p>
+
+  <div style="margin-top:56px;border-top:1px solid var(--border);padding-top:40px">
+    <h2 style="margin-top:0">Related guides</h2>
+    <div class="related-posts">
+      <a href="pdf-to-word.html" class="related-card"><h4>📝 PDF to Word</h4><p>Convert OCR'd PDF to editable Word doc.</p></a>
+      <a href="how-to-compress-pdf.html" class="related-card"><h4>📦 Compress PDF</h4><p>Compress after OCR to manage file size.</p></a>
+      <a href="redact-pdf.html" class="related-card"><h4>🚫 Redact PDF</h4><p>Remove sensitive text from OCR'd documents.</p></a>
+    </div>
+  </div>
+</div>
+<script src="../js/utils.js"></script>
+<script src="../js/header.js"></script>
+<script src="../js/footer.js"></script>
+</body>
+</html>

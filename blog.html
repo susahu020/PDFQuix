@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Blog — PDF Tips, Guides &amp; How-Tos | PDFQuick</title>
+  <meta name="description" content="Learn how to compress, merge, sign, convert and secure PDF files. Free guides and tutorials from the PDFQuick team."/>
+  <meta name="keywords" content="pdf tips, compress pdf guide, pdf to word, how to sign pdf, pdf tutorial"/>
+  <meta name="robots" content="index, follow"/>
+  <meta property="og:title" content="PDFQuick Blog — PDF Tips &amp; Guides"/>
+  <meta property="og:description" content="Free guides on how to work smarter with PDF files."/>
+  <meta property="og:type" content="website"/>
+  <link rel="stylesheet" href="css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script>
+(function(){
+  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
+</head>
+<body>
+
+<div class="blog-hero">
+  <div class="container">
+    <h1>PDF Tips &amp; Guides</h1>
+    <p>Practical how-tos, tool comparisons, and PDF productivity tips — all free, no fluff.</p>
+  </div>
+</div>
+
+<div class="blog-body">
+
+  <!-- Featured Post -->
+  <a href="blog/how-to-compress-pdf.html" class="blog-featured">
+    <div class="blog-featured-thumb">📦</div>
+    <div class="blog-featured-body">
+      <div class="blog-tag">⭐ Featured Guide</div>
+      <h2>How to Compress a PDF Without Losing Quality (2025 Guide)</h2>
+      <p>A bloated PDF slows everything down — uploads, emails, sharing. Learn the right compression level for your use case and shrink your PDF in seconds, free, directly in your browser.</p>
+      <span class="blog-read-more">Read guide →</span>
+    </div>
+  </a>
+
+  <!-- Filter buttons -->
+  <div class="blog-filters">
+    <button class="blog-filter-btn active" onclick="filterPosts('all', this)">All Posts</button>
+    <button class="blog-filter-btn" onclick="filterPosts('how-to', this)">How-To</button>
+    <button class="blog-filter-btn" onclick="filterPosts('comparison', this)">Comparisons</button>
+    <button class="blog-filter-btn" onclick="filterPosts('tips', this)">Tips &amp; Tricks</button>
+    <button class="blog-filter-btn" onclick="filterPosts('security', this)">Security</button>
+    <button class="blog-filter-btn" onclick="filterPosts('convert', this)">Convert</button>
+  </div>
+
+  <!-- Blog grid -->
+  <div class="blog-grid" id="blogGrid">
+
+    <a href="blog/merge-pdf-free.html" class="blog-card" data-cat="how-to">
+      <div class="blog-card-thumb" style="background:#eff6ff;">📑</div>
+      <div class="blog-card-body">
+        <div class="blog-tag">How-To</div>
+        <h2>How to Merge Multiple PDFs Into One File for Free</h2>
+        <p>Combining PDF files doesn't need paid software. Here's how to do it in your browser in 30 seconds.</p>
+        <div class="blog-card-meta">
+          <span>5 min read</span>
+          <span class="blog-read-more">Read →</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="blog/pdf-to-word.html" class="blog-card" data-cat="convert">
+      <div class="blog-card-thumb" style="background:#f0fdf4;">📝</div>
+      <div class="blog-card-body">
+        <div class="blog-tag">Convert</div>
+        <h2>PDF to Word: Best Free Methods in 2025</h2>
+        <p>Need to edit a PDF? We compare every approach — browser tools, desktop apps, and online converters — so you can pick the right one.</p>
+        <div class="blog-card-meta">
+          <span>7 min read</span>
+          <span class="blog-read-more">Read →</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="blog/sign-pdf-free.html" class="blog-card" data-cat="how-to">
+      <div class="blog-card-thumb" style="background:#fef3c7;">✍️</div>
+      <div class="blog-card-body">
+        <div class="blog-tag">How-To</div>
+        <h2>How to Sign a PDF Free — Without Printing It</h2>
+        <p>Draw, type, or upload your signature and apply it to any PDF in seconds. No Adobe, no account needed.</p>
+        <div class="blog-card-meta">
+          <span>4 min read</span>
+          <span class="blog-read-more">Read →</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="blog/compress-pdf-email.html" class="blog-card" data-cat="tips">
+      <div class="blog-card-thumb" style="background:#fef2f2;">📧</div>
+      <div class="blog-card-body">
+        <div class="blog-tag">Tips &amp; Tricks</div>
+        <h2>Why Your PDF Is Too Large for Email (and How to Fix It)</h2>
+        <p>Gmail's 25MB limit catching you out? Here's what's making your PDF big and the fastest way to shrink it.</p>
+        <div class="blog-card-meta">
+          <span>3 min read</span>
+          <span class="blog-read-more">Read →</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="blog/protect-pdf-password.html" class="blog-card" data-cat="security">
+      <div class="blog-card-thumb" style="background:#f5f3ff;">🔐</div>
+      <div class="blog-card-body">
+        <div class="blog-tag">Security</div>
+        <h2>How to Password-Protect a PDF (And When You Should)</h2>
+        <p>Not every PDF needs a password. We explain when to protect files, how strong PDF encryption is, and how to do it free.</p>
+        <div class="blog-card-meta">
+          <span>5 min read</span>
+          <span class="blog-read-more">Read →</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="blog/ocr-scanned-pdf.html" class="blog-card" data-cat="how-to">
+      <div class="blog-card-thumb" style="background:#ecfeff;">👁️</div>
+      <div class="blog-card-body">
+        <div class="blog-tag">How-To</div>
+        <h2>How to Make a Scanned PDF Searchable with OCR</h2>
+        <p>Got a scanned document you can't search or copy text from? OCR (Optical Character Recognition) fixes that in one click.</p>
+        <div class="blog-card-meta">
+          <span>6 min read</span>
+          <span class="blog-read-more">Read →</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="blog/pdf-vs-word.html" class="blog-card" data-cat="comparison">
+      <div class="blog-card-thumb" style="background:#fff7ed;">⚖️</div>
+      <div class="blog-card-body">
+        <div class="blog-tag">Comparison</div>
+        <h2>PDF vs Word: When to Use Which Format</h2>
+        <p>PDF is great for sharing; Word is great for editing. But there are nuances. Here's a definitive guide to picking the right format.</p>
+        <div class="blog-card-meta">
+          <span>5 min read</span>
+          <span class="blog-read-more">Read →</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="blog/redact-pdf.html" class="blog-card" data-cat="security">
+      <div class="blog-card-thumb" style="background:#fef2f2;">🚫</div>
+      <div class="blog-card-body">
+        <div class="blog-tag">Security</div>
+        <h2>How to Properly Redact Sensitive Information in a PDF</h2>
+        <p>Simply drawing a black box isn't real redaction. Learn how to permanently remove text and images so they can't be recovered.</p>
+        <div class="blog-card-meta">
+          <span>5 min read</span>
+          <span class="blog-read-more">Read →</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="blog/pdf-to-excel.html" class="blog-card" data-cat="convert">
+      <div class="blog-card-thumb" style="background:#f0fdf4;">📊</div>
+      <div class="blog-card-body">
+        <div class="blog-tag">Convert</div>
+        <h2>How to Extract Tables from a PDF into Excel</h2>
+        <p>Stuck copying numbers by hand? Our PDF to Excel tool extracts tables automatically. Here's how to get the best results.</p>
+        <div class="blog-card-meta">
+          <span>4 min read</span>
+          <span class="blog-read-more">Read →</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="blog/batch-process-pdfs.html" class="blog-card" data-cat="tips">
+      <div class="blog-card-thumb" style="background:#eff6ff;">⚙️</div>
+      <div class="blog-card-body">
+        <div class="blog-tag">Tips &amp; Tricks</div>
+        <h2>Process 50 PDFs at Once: A Guide to Batch Operations</h2>
+        <p>Compressing or converting one file at a time is painful. Here's how to batch-process dozens of PDFs simultaneously.</p>
+        <div class="blog-card-meta">
+          <span>4 min read</span>
+          <span class="blog-read-more">Read →</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="blog/ilovepdf-vs-pdfquick.html" class="blog-card" data-cat="comparison">
+      <div class="blog-card-thumb" style="background:#fef3c7;">🏆</div>
+      <div class="blog-card-body">
+        <div class="blog-tag">Comparison</div>
+        <h2>iLovePDF vs PDFQuick: Which Is Better for Privacy?</h2>
+        <p>Both are popular free tools. But one uploads your files to a server. We break down the key differences.</p>
+        <div class="blog-card-meta">
+          <span>6 min read</span>
+          <span class="blog-read-more">Read →</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="blog/fill-pdf-forms.html" class="blog-card" data-cat="how-to">
+      <div class="blog-card-thumb" style="background:#f5f3ff;">📋</div>
+      <div class="blog-card-body">
+        <div class="blog-tag">How-To</div>
+        <h2>How to Fill Out a PDF Form Online (Without Adobe Reader)</h2>
+        <p>PDFs with blank fields, checkboxes, and signature boxes — you can fill and save them for free, right in your browser.</p>
+        <div class="blog-card-meta">
+          <span>3 min read</span>
+          <span class="blog-read-more">Read →</span>
+        </div>
+      </div>
+    </a>
+
+
+    <a href="blog/watermark-pdf.html" class="blog-card" data-cat="tips">
+      <div class="blog-card-thumb" style="background:#ecfdf5;">💧</div>
+      <div class="blog-card-body">
+        <div class="blog-tag">Tips &amp; Tricks</div>
+        <h2>How to Add a Watermark to a PDF Free</h2>
+        <p>Stamp CONFIDENTIAL, DRAFT, or your logo across every page. Text or image watermarks, fully customisable, in seconds.</p>
+        <div class="blog-card-meta">
+          <span>4 min read</span>
+          <span class="blog-read-more">Read →</span>
+        </div>
+      </div>
+    </a>
+
+  </div>
+</div>
+
+<script>
+function filterPosts(cat, btn) {
+  document.querySelectorAll('.blog-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.blog-card').forEach(card => {
+    if (cat === 'all' || card.dataset.cat === cat) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+</script>
+<script src="js/utils.js"></script>
+<script src="js/header.js"></script>
+<script src="js/footer.js"></script>
+</body>
+</html>
