@@ -3,6 +3,10 @@
 // LEFT: Logo
 // CENTRE: [Compress PDF] [Merge PDF] [e-Sign PDF] | [Convert ▾] [All Tools ▾]
 // RIGHT: Search bar | Dark-mode icon
+// PDFQuick — Header v6
+// LEFT: Logo
+// CENTRE: [Compress PDF] [Merge PDF] [e-Sign PDF] | [Convert ▾] [All Tools ▾]
+// RIGHT: Search bar | Dark-mode icon
 // ============================================
 
 const TOOLS = {
@@ -85,6 +89,25 @@ function buildCatPanel(cat, prefix) {
         <span class="hdd-tool-desc">${t.desc}</span>
       </span>
     </a>`).join('');
+// 3 pinned quick-access tools shown as icon pills in the centre
+const PINNED = [
+  { name: 'Compress PDF', href: 'compress.html', icon: '🗜️', color: '#ef4444', bg: '#fee2e2' },
+  { name: 'Merge PDF',    href: 'merge.html',    icon: '🔗', color: '#3b82f6', bg: '#dbeafe' },
+  { name: 'e-Sign PDF',   href: 'esign.html',    icon: '✍️', color: '#8b5cf6', bg: '#ede9fe' },
+];
+
+// ─────────────────────────────────────────────
+// Build a single category dropdown panel
+// ─────────────────────────────────────────────
+function buildCatPanel(cat, prefix) {
+  const toolLinks = cat.tools.map(t => `
+    <a class="hdd-tool" href="${prefix}${t.href}">
+      <span class="hdd-tool-icon" style="background:${cat.bg};color:${cat.color}">${t.icon}</span>
+      <span class="hdd-tool-body">
+        <span class="hdd-tool-name">${t.name}${t.isNew ? ' <span class="hdd-new">New</span>' : ''}</span>
+        <span class="hdd-tool-desc">${t.desc}</span>
+      </span>
+    </a>`).join('');
 
   return `
     <div class="hdd-panel-header" style="border-top:3px solid ${cat.color}">
@@ -116,7 +139,39 @@ function buildAllToolsPanel(prefix) {
         <div class="all-col-head" style="color:${cat.color}">
           <span class="all-col-icon" style="background:${cat.bg};color:${cat.color}">${cat.icon}</span>
           ${cat.label}
+  return `
+    <div class="hdd-panel-header" style="border-top:3px solid ${cat.color}">
+      <span class="hdd-panel-icon" style="background:${cat.bg};color:${cat.color}">${cat.icon}</span>
+      <div>
+        <div class="hdd-panel-title">${cat.label}</div>
+        <div class="hdd-panel-desc">${cat.desc}</div>
+      </div>
+    </div>
+    <div class="hdd-tools-grid">${toolLinks}</div>`;
+}
+
+// ─────────────────────────────────────────────
+// Build the "All Tools" mega-panel (category columns)
+// ─────────────────────────────────────────────
+function buildAllToolsPanel(prefix) {
+  const columns = Object.values(TOOLS).map(cat => {
+    const links = cat.tools.map(t => `
+      <a class="hdd-tool" href="${prefix}${t.href}">
+        <span class="hdd-tool-icon" style="background:${cat.bg};color:${cat.color}">${t.icon}</span>
+        <span class="hdd-tool-body">
+          <span class="hdd-tool-name">${t.name}${t.isNew ? ' <span class="hdd-new">New</span>' : ''}</span>
+          <span class="hdd-tool-desc">${t.desc}</span>
+        </span>
+      </a>`).join('');
+
+    return `
+      <div class="all-col">
+        <div class="all-col-head" style="color:${cat.color}">
+          <span class="all-col-icon" style="background:${cat.bg};color:${cat.color}">${cat.icon}</span>
+          ${cat.label}
         </div>
+        ${links}
+      </div>`;
         ${links}
       </div>`;
   }).join('');
@@ -161,6 +216,7 @@ function buildHeader(isToolPage) {
     return `
     <div class="mob-cat">
       <div class="mob-cat-title" style="color:${cat.color}">${cat.icon} ${cat.label}</div>
+      <div class="mob-cat-title" style="color:${cat.color}">${cat.icon} ${cat.label}</div>
       <div class="mob-tools">${links}</div>
     </div>`;
   }).join('');
@@ -174,6 +230,7 @@ function buildHeader(isToolPage) {
   return `
   <div class="hdd-backdrop" id="hddBackdrop"></div>
 
+  <!-- Mobile overlay -->
   <!-- Mobile overlay -->
   <div class="mob-overlay" id="mobOverlay">
     <div class="mob-overlay-inner">
@@ -200,9 +257,24 @@ function buildHeader(isToolPage) {
           <span class="mob-link-name">Contact</span>
         </a>
       </div>
+      <div class="mob-static-links">
+        <a class="mob-link" href="${urlBase}blog.html">
+          <span class="mob-link-icon" style="background:#fff0f1;color:#E63946">📰</span>
+          <span class="mob-link-name">Blog</span>
+        </a>
+        <a class="mob-link" href="${aboutHref}">
+          <span class="mob-link-icon" style="background:#eff6ff;color:#3b82f6">ℹ️</span>
+          <span class="mob-link-name">About</span>
+        </a>
+        <a class="mob-link" href="${urlBase}contact.html">
+          <span class="mob-link-icon" style="background:#f0fdf4;color:#16a34a">✉️</span>
+          <span class="mob-link-name">Contact</span>
+        </a>
+      </div>
     </div>
   </div>
 
+  <!-- Main header -->
   <!-- Main header -->
   <header class="header" id="siteHeader">
     <div class="container header-inner">
@@ -251,7 +323,9 @@ function buildHeader(isToolPage) {
       </nav>
 
       <!-- RIGHT: Search + dark mode + hamburger -->
+      <!-- RIGHT: Search + dark mode + hamburger -->
       <div class="header-right">
+
 
         <div class="hdr-search-wrap" id="hdrSearchWrap">
           <span class="hdr-search-icon">🔍</span>
@@ -268,13 +342,16 @@ function buildHeader(isToolPage) {
           <div class="hdr-search-results" id="hdrSearchResults"></div>
         </div>
 
+
         <button class="hdr-dm-btn" id="dmToggle" onclick="toggleDarkMode()" aria-label="Toggle dark mode">
           <span id="dmIcon">🌙</span>
         </button>
 
+
         <button class="mob-burger" onclick="openMob()" aria-label="Open menu">
           <span></span><span></span><span></span>
         </button>
+
 
       </div>
     </div>
@@ -284,7 +361,11 @@ function buildHeader(isToolPage) {
 // ─────────────────────────────────────────────
 // Hover / click interaction logic
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Hover / click interaction logic
+// ─────────────────────────────────────────────
 let hoverTimer = null;
+
 
 function setupHover() {
   document.querySelectorAll('.hdd-item').forEach(item => {
@@ -295,11 +376,15 @@ function setupHover() {
     });
     item.addEventListener('mouseleave', () => {
       hoverTimer = setTimeout(closeAll, 130);
+      hoverTimer = setTimeout(closeAll, 130);
     });
+    item.querySelector('.hdd-panel')?.addEventListener('mouseenter', () => clearTimeout(hoverTimer));
     item.querySelector('.hdd-panel')?.addEventListener('mouseenter', () => clearTimeout(hoverTimer));
     item.querySelector('.hdd-panel')?.addEventListener('mouseleave', () => {
       hoverTimer = setTimeout(closeAll, 130);
+      hoverTimer = setTimeout(closeAll, 130);
     });
+    item.querySelector('.hdd-trigger')?.addEventListener('click', e => {
     item.querySelector('.hdd-trigger')?.addEventListener('click', e => {
       e.stopPropagation();
       const isOpen = item.classList.contains('open');
@@ -307,6 +392,7 @@ function setupHover() {
       if (!isOpen) openItem(item);
     });
   });
+
 
   document.getElementById('hddBackdrop')?.addEventListener('click', closeAll);
   document.addEventListener('keydown', e => {
@@ -318,6 +404,7 @@ function openItem(item) {
   item.classList.add('open');
   item.querySelector('.hdd-trigger')?.setAttribute('aria-expanded', 'true');
   document.getElementById('hddBackdrop')?.classList.add('active');
+  document.getElementById('hddBackdrop')?.classList.add('active');
 }
 function closeAll() {
   document.querySelectorAll('.hdd-item.open').forEach(el => {
@@ -325,8 +412,12 @@ function closeAll() {
     el.querySelector('.hdd-trigger')?.setAttribute('aria-expanded', 'false');
   });
   document.getElementById('hddBackdrop')?.classList.remove('active');
+  document.getElementById('hddBackdrop')?.classList.remove('active');
 }
 
+// ─────────────────────────────────────────────
+// Mobile
+// ─────────────────────────────────────────────
 // ─────────────────────────────────────────────
 // Mobile
 // ─────────────────────────────────────────────
@@ -343,8 +434,12 @@ function closeMob() {
 // ─────────────────────────────────────────────
 // Search helpers
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Search helpers
+// ─────────────────────────────────────────────
 function getAllTools(prefix) {
   const all = [];
+  Object.values(TOOLS).forEach(cat => {
   Object.values(TOOLS).forEach(cat => {
     cat.tools.forEach(t => all.push({ ...t, cat: cat.label, catIcon: cat.icon, catColor: cat.color, catBg: cat.bg, href: prefix + t.href }));
   });
@@ -361,7 +456,19 @@ function runHeaderSearch(query) {
   if (!q) { results.classList.remove('open'); return; }
   const matches = getAllTools(prefix).filter(t =>
     t.name.toLowerCase().includes(q) || (t.desc || '').toLowerCase().includes(q) || t.cat.toLowerCase().includes(q)
+  const matches = getAllTools(prefix).filter(t =>
+    t.name.toLowerCase().includes(q) || (t.desc || '').toLowerCase().includes(q) || t.cat.toLowerCase().includes(q)
   ).slice(0, 8);
+  results.innerHTML = matches.length
+    ? matches.map(t => `
+        <a class="hsr-item" href="${t.href}">
+          <span class="hsr-icon" style="background:${t.catBg};color:${t.catColor}">${t.icon}</span>
+          <span class="hsr-body">
+            <span class="hsr-name">${highlightMatch(t.name, q)}</span>
+            <span class="hsr-cat">${t.catIcon} ${t.cat}</span>
+          </span>
+        </a>`).join('')
+    : `<div class="hsr-empty">No tools match "<strong>${q}</strong>"</div>`;
   results.innerHTML = matches.length
     ? matches.map(t => `
         <a class="hsr-item" href="${t.href}">
@@ -388,14 +495,19 @@ function clearHeaderSearch() {
   const inp = document.getElementById('hdrSearchInput');
   if (inp) { inp.value = ''; inp.focus(); }
   document.getElementById('hdrSearchResults')?.classList.remove('open');
+  document.getElementById('hdrSearchResults')?.classList.remove('open');
   const clear = document.getElementById('hdrSearchClear');
   if (clear) clear.style.display = 'none';
 }
 document.addEventListener('click', e => {
   if (!document.getElementById('hdrSearchWrap')?.contains(e.target))
+  if (!document.getElementById('hdrSearchWrap')?.contains(e.target))
     document.getElementById('hdrSearchResults')?.classList.remove('open');
 });
 
+// ─────────────────────────────────────────────
+// Mobile search
+// ─────────────────────────────────────────────
 // ─────────────────────────────────────────────
 // Mobile search
 // ─────────────────────────────────────────────
@@ -406,15 +518,21 @@ function runMobSearch(query) {
   if (!cats) return;
   if (!q) {
     cats.querySelectorAll('.mob-link, .mob-cat').forEach(el => el.style.display = '');
+    cats.querySelectorAll('.mob-link, .mob-cat').forEach(el => el.style.display = '');
     return;
   }
   cats.querySelectorAll('.mob-cat').forEach(catEl => {
     let visible = false;
     catEl.querySelectorAll('.mob-link').forEach(link => {
       const show = link.textContent.toLowerCase().includes(q);
+    let visible = false;
+    catEl.querySelectorAll('.mob-link').forEach(link => {
+      const show = link.textContent.toLowerCase().includes(q);
       link.style.display = show ? '' : 'none';
       if (show) visible = true;
+      if (show) visible = true;
     });
+    catEl.style.display = visible ? '' : 'none';
     catEl.style.display = visible ? '' : 'none';
   });
 }
@@ -422,8 +540,12 @@ function runMobSearch(query) {
 // ─────────────────────────────────────────────
 // Dark mode
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Dark mode
+// ─────────────────────────────────────────────
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
+  document.body?.setAttribute('data-theme', t);
   document.body?.setAttribute('data-theme', t);
   const icon = document.getElementById('dmIcon');
   if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙';
@@ -444,7 +566,12 @@ function toggleDarkMode() {
 // Init
 // ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
+// ─────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
   const isToolPage = window.location.pathname.includes('/tools/');
+  document.querySelectorAll('header.header, .hdd-backdrop, .mob-overlay').forEach(el => el.remove());
   document.querySelectorAll('header.header, .hdd-backdrop, .mob-overlay').forEach(el => el.remove());
   document.body.insertAdjacentHTML('afterbegin', buildHeader(isToolPage));
   setupHover();

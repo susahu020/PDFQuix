@@ -456,7 +456,7 @@ a { text-decoration: none; color: inherit; }
    ============================================ */
 
 .header { position: sticky; top: 0; z-index: 300; background: var(--white); border-bottom: 1px solid var(--border); }
-.header-inner { display: flex; align-items: center; height: 60px; gap: 0; }
+.header-inner { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 0; }
 
 /* ── Logo (left) ── */
 .logo { flex-shrink: 0; display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 17px; color: var(--text-primary); white-space: nowrap; margin-right: 24px; }
