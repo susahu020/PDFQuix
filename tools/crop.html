@@ -197,6 +197,7 @@
     const { PDFDocument } = PDFLib;
 
     let pdfJsDoc = null, originalBytes = null, totalPages = 1, currentPage = 1;
+    // originalBytes stored as Uint8Array to avoid ArrayBuffer detachment issues
     let pageWidthPt = 0, pageHeightPt = 0; // PDF units (points)
     // cropBox in canvas-relative fraction coords [x0, y0, x1, y1]
     let cropFrac = { x0: 0, y0: 0, x1: 1, y1: 1 };
@@ -215,8 +216,10 @@
     async function loadPDF(file) {
       if (!file || !file.name.endsWith('.pdf')) { showError('Please upload a PDF.'); return; }
       clearError();
-      originalBytes = await readFileAsArrayBuffer(file);
-      pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(originalBytes) }).promise;
+      // Store as Uint8Array so it is never detached between uses
+      const buf = await readFileAsArrayBuffer(file);
+      originalBytes = new Uint8Array(buf);
+      pdfJsDoc = await pdfjsLib.getDocument({ data: originalBytes.slice() }).promise;
       totalPages = pdfJsDoc.numPages;
       currentPage = 1;
       cropFrac = { x0: 0, y0: 0, x1: 1, y1: 1 };
@@ -317,7 +320,8 @@
       setProgress(20, 'Loading…');
 
       try {
-        const pdfLib = await PDFDocument.load(originalBytes);
+        // Use a fresh copy so the Uint8Array is never shared/detached
+        const pdfLib = await PDFDocument.load(originalBytes.slice());
         const pages = pdfLib.getPages();
         const applyTo = document.querySelector('input[name="applyTo"]:checked').value;
         setProgress(50, 'Cropping…');

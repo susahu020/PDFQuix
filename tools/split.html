@@ -67,6 +67,9 @@
         <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Choose PDF</button>
       </div>
 
+      <!-- File list shows uploaded file name -->
+      <div class="file-list" id="fileList"></div>
+
       <div id="splitOptions" style="display:none">
 
         <div class="options-panel" style="margin-top:20px">
@@ -159,8 +162,16 @@
       if (!file.name.endsWith('.pdf') && file.type !== 'application/pdf') { showError('Please upload a PDF file.'); return; }
       pdfFile = file;
       clearError();
-      setProgress(0);
       resultBox.classList.remove('visible');
+
+      // Show uploaded file name and size
+      const fileListEl = document.getElementById('fileList');
+      renderFileList([pdfFile], fileListEl, () => {
+        pdfFile = null;
+        fileListEl.innerHTML = '';
+        splitOpts.style.display = 'none';
+      });
+
       try {
         const buf = await readFileAsArrayBuffer(file);
         const doc = await PDFDocument.load(buf, { ignoreEncryption: true });
@@ -291,6 +302,7 @@
       splitOpts.style.display = 'none';
       resultBox.classList.remove('visible');
       pageGrid.innerHTML = '';
+      document.getElementById('fileList').innerHTML = '';
       clearError();
     }
   </script>
