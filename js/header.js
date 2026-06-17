@@ -128,7 +128,7 @@ function buildAllToolsPanel(prefix) {
   return `
     <div class="all-panel-header">
       <div class="all-panel-title">All PDF Tools</div>
-      <div class="all-panel-desc">28 free tools — no account needed</div>
+      <div class="all-panel-desc">32 free tools — no account needed</div>
     </div>
     <div class="all-tools-cols">${columns}</div>`;
 }
