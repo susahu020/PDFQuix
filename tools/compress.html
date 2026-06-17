@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Compress PDF — PDFQuick</title>
+  <title>Compress PDF — PDFQuix</title>
   <meta name="description" content="Compress PDF files online for free. Reduce size without losing quality. No signup required."/>
   <link rel="stylesheet" href="../css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -11,7 +11,7 @@
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script>
 (function(){
-  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
   document.documentElement.setAttribute("data-theme",t);
 })();
 </script>
@@ -183,8 +183,8 @@
           newDoc.setAuthor('');
           newDoc.setSubject('');
           newDoc.setKeywords([]);
-          newDoc.setProducer('PDFQuick');
-          newDoc.setCreator('PDFQuick');
+          newDoc.setProducer('PDFQuix');
+          newDoc.setCreator('PDFQuix');
         }
 
         for (let pageNum = 1; pageNum <= numPages; pageNum++) {

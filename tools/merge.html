@@ -3,14 +3,18 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Merge PDF — PDFQuick</title>
+  <title>Merge PDF — PDFQuix</title>
   <meta name="description" content="Combine multiple PDF files into one. Free, fast, no signup needed."/>
   <link rel="stylesheet" href="../css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <style>
+    .file-item.dragging   { opacity: .4; }
+    .file-item.drag-over  { border-color: var(--red); box-shadow: 0 0 0 2px rgba(230,57,70,.15); }
+  </style>
 <script>
 (function(){
-  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
   document.documentElement.setAttribute("data-theme",t);
 })();
 </script>
@@ -43,7 +47,7 @@
       <div class="file-list" id="fileList"></div>
 
       <div id="reorderHint" style="display:none; font-size:13px; color:var(--text-muted); margin-top:8px;">
-        💡 Files will be merged in the order shown above. Remove any you don't need.
+        💡 Drag the ⠿ handle to reorder files. Files will be merged in the order shown above.
       </div>
 
       <div class="action-bar" id="actionBar" style="display:none">
@@ -109,15 +113,59 @@
     }
 
     function renderList() {
-      renderFileList(files, fileListEl, i => {
-        files.splice(i, 1);
-        renderList();
+      fileListEl.innerHTML = '';
+      files.forEach((file, i) => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.draggable = true;
+        item.dataset.idx = i;
+        item.style.cursor = 'grab';
+        item.innerHTML = `
+          <span class="file-item-icon" title="Drag to reorder" style="cursor:grab;">⠿</span>
+          <div class="file-item-info">
+            <div class="file-item-name">${file.name}</div>
+            <div class="file-item-size">${formatBytes(file.size)}</div>
+          </div>
+          <button class="file-item-remove" title="Remove">✕</button>
+        `;
+        item.querySelector('.file-item-remove').onclick = () => { files.splice(i, 1); renderList(); };
+
+        // Drag-to-reorder events
+        item.addEventListener('dragstart', e => {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', i);
+          setTimeout(() => item.classList.add('dragging'), 0);
+        });
+        item.addEventListener('dragend', () => {
+          item.classList.remove('dragging');
+          fileListEl.querySelectorAll('.file-item').forEach(el => el.classList.remove('drag-over'));
+        });
+        item.addEventListener('dragover', e => {
+          e.preventDefault();
+          fileListEl.querySelectorAll('.file-item').forEach(el => el.classList.remove('drag-over'));
+          item.classList.add('drag-over');
+        });
+        item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+        item.addEventListener('drop', e => {
+          e.preventDefault();
+          item.classList.remove('drag-over');
+          const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+          const toIdx   = i;
+          if (fromIdx === toIdx) return;
+          const [moved] = files.splice(fromIdx, 1);
+          files.splice(toIdx, 0, moved);
+          renderList();
+        });
+
+        fileListEl.appendChild(item);
       });
+
       const show = files.length > 0;
-      actionBar.style.display  = show ? 'flex' : 'none';
-      reorderHint.style.display= show ? 'block' : 'none';
-      mergeBtn.textContent     = `🔗 Merge ${files.length} PDF${files.length > 1 ? 's' : ''}`;
+      actionBar.style.display   = show ? 'flex' : 'none';
+      reorderHint.style.display = show ? 'block' : 'none';
+      mergeBtn.textContent = `🔗 Merge ${files.length} PDF${files.length > 1 ? 's' : ''}`;
     }
+    
 
     mergeBtn.addEventListener('click', async () => {
       if (files.length < 2) { showError('Please add at least 2 PDF files to merge.'); return; }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>e-Sign PDF — PDFQuick</title>
+  <title>e-Sign PDF — PDFQuix</title>
   <meta name="description" content="Sign PDF documents online for free. Draw, type, or upload your signature and place it anywhere on the PDF."/>
   <link rel="stylesheet" href="../css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Dancing+Script:wght@600&display=swap" rel="stylesheet"/>
@@ -105,7 +105,7 @@
   </style>
 <script>
 (function(){
-  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
   document.documentElement.setAttribute("data-theme",t);
 })();
 </script>
@@ -395,7 +395,7 @@ async function handlePdf(file) {
   clearError();
   placements = {};
   const buf = await readFileAsArrayBuffer(file);
-  pdfJsDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+  pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(buf.slice(0)) }).promise;
   totalPages = pdfJsDoc.numPages;
   currentPage = 1;
   document.getElementById('placementPanel').style.display = 'block';
@@ -525,11 +525,23 @@ document.getElementById('applyBtn').addEventListener('click', async () => {
     const buf    = await readFileAsArrayBuffer(pdfFile);
     const pdfDoc = await PDFDocument.load(buf, { ignoreEncryption:true });
 
-    // Load signature as image
+    // Load signature as image — convert data URL directly to bytes (fetch on data: URLs is unreliable)
     setProgress(40, 'Embedding signature...');
-    const sigResp  = await fetch(sigDataUrl);
-    const sigBytes = new Uint8Array(await sigResp.arrayBuffer());
-    const sigImg   = await pdfDoc.embedPng(sigBytes);
+    function dataUrlToBytes(dataUrl) {
+      const base64 = dataUrl.split(',')[1];
+      const binary = atob(base64);
+      const bytes  = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    }
+    const sigBytes  = dataUrlToBytes(sigDataUrl);
+    const mimeType  = sigDataUrl.split(';')[0].split(':')[1]; // e.g. image/png or image/jpeg
+    let sigImg;
+    if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+      sigImg = await pdfDoc.embedJpg(sigBytes);
+    } else {
+      sigImg = await pdfDoc.embedPng(sigBytes);
+    }
 
     setProgress(60, 'Placing on pages...');
     const pdfPages = pdfDoc.getPages();

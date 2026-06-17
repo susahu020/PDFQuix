@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PDF to Word — PDFQuick</title>
+  <title>PDF to Word — PDFQuix</title>
   <meta name="description" content="Convert PDF to editable Word document (.docx) online for free. No signup needed."/>
   <link rel="stylesheet" href="../css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -31,7 +31,7 @@
   </style>
 <script>
 (function(){
-  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
   document.documentElement.setAttribute("data-theme",t);
 })();
 </script>
@@ -220,8 +220,8 @@
 
         const doc = new Document({
           sections: [{ properties: {}, children }],
-          creator: 'PDFQuick',
-          description: 'Converted from PDF by PDFQuick',
+          creator: 'PDFQuix',
+          description: 'Converted from PDF by PDFQuix',
           title: pdfFile.name.replace('.pdf',''),
         });
 

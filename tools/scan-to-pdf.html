@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Scan to PDF — PDFQuix</title>
+  <meta name="description" content="Convert scanned images or photos into a PDF. Supports JPG, PNG, WEBP. Free, no signup."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <style>
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .image-card {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: var(--bg-secondary);
+      aspect-ratio: 3/4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+    }
+    .image-card img {
+      width: 100%; height: 100%; object-fit: cover;
+    }
+    .image-card .card-remove {
+      position: absolute; top: 5px; right: 5px;
+      background: rgba(0,0,0,0.55); color: #fff;
+      border: none; border-radius: 50%;
+      width: 22px; height: 22px; font-size: 12px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      line-height: 1;
+    }
+    .image-card .card-num {
+      position: absolute; bottom: 5px; left: 7px;
+      background: rgba(0,0,0,0.5); color: #fff;
+      font-size: 11px; font-weight: 600; border-radius: 4px; padding: 1px 6px;
+    }
+    .image-card.drag-over { outline: 2px dashed var(--red); }
+
+    .enhance-toggle {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .enhance-btn {
+      padding: 6px 14px; border: 1px solid var(--border); border-radius: 20px;
+      background: var(--bg); color: var(--text-secondary);
+      font-size: 13px; cursor: pointer; transition: all .15s;
+    }
+    .enhance-btn.active {
+      background: var(--red-light); border-color: var(--red); color: var(--red); font-weight: 500;
+    }
+  </style>
+<script>
+(function(){
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
+</head>
+<body>
+
+  <section class="tool-page-hero">
+    <div class="container">
+      <a href="../index.html" class="back-link">← All tools</a>
+      <h1>Scan to PDF</h1>
+      <p>Turn photos or scanned images into a multi-page PDF. Reorder pages by dragging, apply auto-enhancement, and download instantly.</p>
+    </div>
+  </section>
+
+  <section class="tool-page-body">
+    <div class="container">
+
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/gif,image/bmp" multiple/>
+        <div class="dropzone-icon">📷</div>
+        <h3>Drop your images here</h3>
+        <p>JPG, PNG, WEBP supported — multiple files at once</p>
+        <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Choose Images</button>
+      </div>
+
+      <div id="toolOptions" style="display:none">
+        <div class="image-grid" id="imageGrid"></div>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:8px;">Drag cards to reorder pages · click ✕ to remove</p>
+
+        <div class="options-panel" style="margin-top:20px">
+          <h3>PDF settings</h3>
+
+          <div class="option-row">
+            <span class="option-label">Page size</span>
+            <select class="option-select" id="pageSize">
+              <option value="a4">A4 (210 × 297 mm)</option>
+              <option value="letter">Letter (8.5 × 11 in)</option>
+              <option value="fit">Fit to image</option>
+            </select>
+          </div>
+
+          <div class="option-row">
+            <span class="option-label">Orientation</span>
+            <select class="option-select" id="orientation">
+              <option value="portrait">Portrait</option>
+              <option value="landscape">Landscape</option>
+              <option value="auto">Auto (per image)</option>
+            </select>
+          </div>
+
+          <div class="option-row">
+            <span class="option-label">Margin</span>
+            <select class="option-select" id="margin">
+              <option value="0">No margin</option>
+              <option value="20" selected>Small (20px)</option>
+              <option value="40">Medium (40px)</option>
+              <option value="60">Large (60px)</option>
+            </select>
+          </div>
+
+          <div class="option-row" style="align-items:flex-start;gap:16px">
+            <span class="option-label" style="margin-top:6px">Enhancement</span>
+            <div class="enhance-toggle" id="enhanceGroup">
+              <button class="enhance-btn active" data-val="none" onclick="setEnhance(this)">None</button>
+              <button class="enhance-btn" data-val="bw" onclick="setEnhance(this)">B&amp;W</button>
+              <button class="enhance-btn" data-val="grayscale" onclick="setEnhance(this)">Grayscale</button>
+              <button class="enhance-btn" data-val="sharpen" onclick="setEnhance(this)">Sharpen</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-bar" style="margin-top:20px">
+          <button class="btn-action" id="convertBtn">📄 Create PDF</button>
+          <button class="btn-upload" style="background:transparent;color:var(--red);border:1px solid var(--red);margin-left:12px;" onclick="document.getElementById('fileInput').click()">+ Add more</button>
+          <div class="progress-wrap" id="progressWrap" style="display:none">
+            <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+            <div class="progress-label">Building PDF...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error-box" id="errorBox"></div>
+
+      <div class="result-box" id="resultBox">
+        <h3>✅ PDF created!</h3>
+        <p id="resultDesc"></p>
+        <button class="btn-download" id="downloadBtn">⬇ Download PDF</button>
+        <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Scan another</button>
+      </div>
+
+      <div class="how-to">
+        <h2>How to convert scans to PDF</h2>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><h4>Upload images</h4><p>Select one or more scanned images or photos.</p></div>
+          <div class="step"><div class="step-num">2</div><h4>Reorder</h4><p>Drag thumbnails to arrange page order.</p></div>
+          <div class="step"><div class="step-num">3</div><h4>Adjust settings</h4><p>Choose page size, margins and enhancement.</p></div>
+          <div class="step"><div class="step-num">4</div><h4>Download</h4><p>Get a clean, multi-page PDF instantly.</p></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <script src="../js/utils.js"></script>
+  <script>
+    const { PDFDocument, rgb } = PDFLib;
+
+    let images = []; // {file, dataUrl}
+    let enhancement = 'none';
+    let dragSrcIdx = null;
+
+    const dropzone    = document.getElementById('dropzone');
+    const fileInput   = document.getElementById('fileInput');
+    const toolOptions = document.getElementById('toolOptions');
+    const imageGrid   = document.getElementById('imageGrid');
+    const convertBtn  = document.getElementById('convertBtn');
+    const progressWrap= document.getElementById('progressWrap');
+    const resultBox   = document.getElementById('resultBox');
+    const resultDesc  = document.getElementById('resultDesc');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    setupDropzone(dropzone, f => handleFiles(f));
+    fileInput.addEventListener('change', e => { if (e.target.files.length) handleFiles(Array.from(e.target.files)); });
+
+    function handleFiles(files) {
+      const imgFiles = files.filter(f => f.type.startsWith('image/'));
+      if (!imgFiles.length) { showError('Please upload image files (JPG, PNG, WEBP).'); return; }
+      clearError();
+      resultBox.classList.remove('visible');
+      const readers = imgFiles.map(f => new Promise(res => {
+        const r = new FileReader();
+        r.onload = e => res({ file: f, dataUrl: e.target.result });
+        r.readAsDataURL(f);
+      }));
+      Promise.all(readers).then(loaded => {
+        images = images.concat(loaded);
+        renderGrid();
+        toolOptions.style.display = 'block';
+      });
+    }
+
+    function setEnhance(el) {
+      document.querySelectorAll('.enhance-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      enhancement = el.dataset.val;
+    }
+
+    function renderGrid() {
+      imageGrid.innerHTML = '';
+      images.forEach((img, i) => {
+        const card = document.createElement('div');
+        card.className = 'image-card';
+        card.draggable = true;
+        card.dataset.idx = i;
+        card.innerHTML = `
+          <img src="${img.dataUrl}" alt="page ${i+1}"/>
+          <button class="card-remove" title="Remove">✕</button>
+          <span class="card-num">${i + 1}</span>
+        `;
+        card.querySelector('.card-remove').onclick = (e) => { e.stopPropagation(); removeImage(i); };
+        card.addEventListener('dragstart', () => { dragSrcIdx = i; card.style.opacity = '0.5'; });
+        card.addEventListener('dragend',   () => { card.style.opacity = '1'; });
+        card.addEventListener('dragover',  e => { e.preventDefault(); card.classList.add('drag-over'); });
+        card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+        card.addEventListener('drop', e => {
+          e.preventDefault(); card.classList.remove('drag-over');
+          if (dragSrcIdx === null || dragSrcIdx === i) return;
+          const moved = images.splice(dragSrcIdx, 1)[0];
+          images.splice(i, 0, moved);
+          renderGrid();
+        });
+        imageGrid.appendChild(card);
+      });
+    }
+
+    function removeImage(idx) {
+      images.splice(idx, 1);
+      if (images.length === 0) { toolOptions.style.display = 'none'; return; }
+      renderGrid();
+    }
+
+    function applyEnhancement(canvas, ctx, imgEl) {
+      ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+      if (enhancement === 'none') return;
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = imgData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        if (enhancement === 'bw') {
+          const avg = (d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114);
+          const bw = avg > 128 ? 255 : 0;
+          d[i] = d[i+1] = d[i+2] = bw;
+        } else if (enhancement === 'grayscale') {
+          const gray = d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114;
+          d[i] = d[i+1] = d[i+2] = gray;
+        }
+      }
+      if (enhancement === 'sharpen') {
+        // Simple sharpening via unsharp mask approximation
+        const copy = new Uint8ClampedArray(d);
+        const w = canvas.width;
+        for (let y = 1; y < canvas.height - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            const idx = (y * w + x) * 4;
+            for (let c = 0; c < 3; c++) {
+              const val = 5 * copy[idx+c]
+                - copy[((y-1)*w+x)*4+c]
+                - copy[((y+1)*w+x)*4+c]
+                - copy[(y*w+(x-1))*4+c]
+                - copy[(y*w+(x+1))*4+c];
+              d[idx+c] = Math.min(255, Math.max(0, val));
+            }
+          }
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    convertBtn.addEventListener('click', async () => {
+      if (!images.length) return;
+      clearError();
+      convertBtn.disabled = true;
+      progressWrap.style.display = 'block';
+      resultBox.classList.remove('visible');
+
+      try {
+        setProgress(10, 'Creating PDF...');
+        const pdfDoc = await PDFDocument.create();
+        const pageSizeVal  = document.getElementById('pageSize').value;
+        const orientVal    = document.getElementById('orientation').value;
+        const marginVal    = parseInt(document.getElementById('margin').value);
+
+        const A4     = [595.28, 841.89];
+        const LETTER = [612, 792];
+
+        for (let i = 0; i < images.length; i++) {
+          setProgress(10 + Math.round((i / images.length) * 80), `Processing image ${i+1} of ${images.length}...`);
+
+          const imgEl = new Image();
+          await new Promise(res => { imgEl.onload = res; imgEl.src = images[i].dataUrl; });
+
+          // Apply enhancement via canvas
+          const canvas = document.createElement('canvas');
+          canvas.width  = imgEl.naturalWidth;
+          canvas.height = imgEl.naturalHeight;
+          const ctx = canvas.getContext('2d');
+          applyEnhancement(canvas, ctx, imgEl);
+          const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+          const base64 = jpegDataUrl.split(',')[1];
+          const imgBytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+          const embeddedImg = await pdfDoc.embedJpg(imgBytes);
+
+          let pw, ph;
+          if (pageSizeVal === 'fit') {
+            pw = embeddedImg.width;
+            ph = embeddedImg.height;
+          } else {
+            [pw, ph] = pageSizeVal === 'a4' ? A4 : LETTER;
+          }
+
+          let isLandscape = false;
+          if (orientVal === 'landscape') isLandscape = true;
+          else if (orientVal === 'auto') isLandscape = embeddedImg.width > embeddedImg.height;
+          if (isLandscape && pageSizeVal !== 'fit') [pw, ph] = [ph, pw];
+
+          const page = pdfDoc.addPage([pw, ph]);
+          const m = marginVal;
+          const availW = pw - m * 2;
+          const availH = ph - m * 2;
+          const scale  = Math.min(availW / embeddedImg.width, availH / embeddedImg.height);
+          const drawW  = embeddedImg.width  * scale;
+          const drawH  = embeddedImg.height * scale;
+          const x = m + (availW - drawW) / 2;
+          const y = m + (availH - drawH) / 2;
+          page.drawImage(embeddedImg, { x, y, width: drawW, height: drawH });
+        }
+
+        setProgress(95, 'Saving...');
+        const pdfBytes = await pdfDoc.save();
+        setProgress(100, 'Done!');
+
+        resultDesc.textContent = `PDF created with ${images.length} page${images.length > 1 ? 's' : ''}.`;
+        downloadBtn.onclick = () => downloadFile(pdfBytes, 'scanned.pdf');
+        resultBox.classList.add('visible');
+      } catch (err) {
+        showError('Failed: ' + err.message);
+      } finally {
+        convertBtn.disabled = false;
+        progressWrap.style.display = 'none';
+      }
+    });
+
+    function resetTool() {
+      images = [];
+      imageGrid.innerHTML = '';
+      toolOptions.style.display = 'none';
+      resultBox.classList.remove('visible');
+      clearError();
+    }
+  </script>
+
+<script src="../js/header.js"></script>
+<script src="../js/footer.js"></script>
+</body>
+</html>

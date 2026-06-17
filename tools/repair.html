@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Repair PDF — PDFQuick</title>
+  <title>Repair PDF — PDFQuix</title>
   <meta name="description" content="Repair corrupted or damaged PDF files online for free. Fix PDFs that won't open. No signup required."/>
   <link rel="stylesheet" href="../css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -43,7 +43,7 @@
   </style>
 <script>
 (function(){
-  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
   document.documentElement.setAttribute("data-theme",t);
 })();
 </script>
@@ -61,6 +61,14 @@
 
 <section class="tool-page-body">
   <div class="container">
+
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius-md);padding:14px 18px;margin-bottom:20px;font-size:13px;color:#1e40af;display:flex;gap:10px;align-items:flex-start;">
+      <span style="font-size:18px;">🔧</span>
+      <div>
+        <strong>What does PDF Repair do?</strong><br>
+        This tool re-builds your PDF's internal structure from scratch using pdf-lib — it fixes corrupted cross-reference tables, bad linearization, and broken metadata that stop PDF readers from opening the file. It does <em>not</em> recover images or text that were physically deleted or overwritten; it fixes the <em>file structure</em> so your PDF reader can read it again.
+      </div>
+    </div>
 
     <div class="dropzone" id="dropzone">
       <input type="file" id="fileInput" accept=".pdf"/>

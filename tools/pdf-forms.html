@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PDF Forms — PDFQuix</title>
+  <meta name="description" content="View, fill, and download interactive PDF forms directly in your browser. Free, no signup."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <style>
+    .form-field-list {
+      display: flex; flex-direction: column; gap: 10px;
+      margin-top: 16px;
+    }
+    .form-field-item {
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-secondary);
+      transition: border-color .15s;
+    }
+    .form-field-item:focus-within { border-color: var(--red); }
+    .field-label {
+      font-size: 12px; font-weight: 600;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em;
+    }
+    .field-type-badge {
+      display: inline-block; font-size: 10px; font-weight: 600;
+      padding: 1px 6px; border-radius: 8px; margin-left: 6px;
+      background: var(--red-light); color: var(--red);
+      text-transform: uppercase;
+    }
+    .field-input {
+      font-size: 14px; padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg); color: var(--text-primary);
+      outline: none; width: 100%; box-sizing: border-box;
+      transition: border-color .15s;
+    }
+    .field-input:focus { border-color: var(--red); }
+    .field-checkbox { display: flex; align-items: center; gap: 8px; }
+    .field-checkbox input[type="checkbox"] {
+      width: 18px; height: 18px; accent-color: var(--red); cursor: pointer;
+    }
+
+    .form-summary {
+      display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;
+    }
+    .summary-chip {
+      padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+      background: var(--bg-secondary); border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .summary-chip strong { color: var(--red); }
+
+    .no-fields-msg {
+      text-align: center; padding: 40px 20px;
+      color: var(--text-muted); font-size: 14px;
+      border: 1px dashed var(--border); border-radius: var(--radius-md);
+      margin-top: 16px;
+    }
+
+    .field-group-header {
+      font-size: 13px; font-weight: 600; color: var(--text-secondary);
+      margin-top: 20px; margin-bottom: 8px;
+      padding-bottom: 6px; border-bottom: 1px solid var(--border);
+    }
+  </style>
+<script>
+(function(){
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
+</head>
+<body>
+
+  <section class="tool-page-hero">
+    <div class="container">
+      <a href="../index.html" class="back-link">← All tools</a>
+      <h1>PDF Forms</h1>
+      <p>Open any interactive PDF form, fill in the fields, and download the completed document — no installation needed.</p>
+    </div>
+  </section>
+
+  <section class="tool-page-body">
+    <div class="container">
+
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept=".pdf"/>
+        <div class="dropzone-icon">📋</div>
+        <h3>Drop your PDF form here</h3>
+        <p>Interactive forms with text fields, checkboxes, dropdowns &amp; radio buttons</p>
+        <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Choose PDF Form</button>
+      </div>
+
+      <div class="file-list" id="fileList"></div>
+
+      <div id="toolOptions" style="display:none">
+
+        <div id="formSummary" class="form-summary"></div>
+
+        <div id="formFields" class="form-field-list"></div>
+
+        <div class="action-bar" style="margin-top:24px">
+          <button class="btn-action" id="fillBtn">💾 Save Filled Form</button>
+          <button class="btn-upload" style="background:transparent;color:var(--red);border:1px solid var(--red);margin-left:12px;" id="clearBtn">Clear all fields</button>
+          <div class="progress-wrap" id="progressWrap" style="display:none">
+            <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+            <div class="progress-label">Saving form...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error-box" id="errorBox"></div>
+
+      <div class="result-box" id="resultBox">
+        <h3>✅ Form saved!</h3>
+        <p id="resultDesc"></p>
+        <button class="btn-download" id="downloadBtn">⬇ Download filled form</button>
+        <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Fill another</button>
+      </div>
+
+      <div class="how-to">
+        <h2>How to fill a PDF form</h2>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><h4>Upload form</h4><p>Select your interactive PDF form file.</p></div>
+          <div class="step"><div class="step-num">2</div><h4>Fill fields</h4><p>Enter text, tick checkboxes, and select dropdown options.</p></div>
+          <div class="step"><div class="step-num">3</div><h4>Review</h4><p>Check all fields are correct before saving.</p></div>
+          <div class="step"><div class="step-num">4</div><h4>Download</h4><p>Get the completed form as a standard PDF.</p></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <script src="../js/utils.js"></script>
+  <script>
+    const { PDFDocument, PDFName } = PDFLib;
+
+    let pdfFile = null;
+    let formFields = []; // Parsed field info
+
+    const dropzone    = document.getElementById('dropzone');
+    const fileInput   = document.getElementById('fileInput');
+    const fileListEl  = document.getElementById('fileList');
+    const toolOptions = document.getElementById('toolOptions');
+    const formFieldsEl= document.getElementById('formFields');
+    const formSummary = document.getElementById('formSummary');
+    const fillBtn     = document.getElementById('fillBtn');
+    const clearBtn    = document.getElementById('clearBtn');
+    const progressWrap= document.getElementById('progressWrap');
+    const resultBox   = document.getElementById('resultBox');
+    const resultDesc  = document.getElementById('resultDesc');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    setupDropzone(dropzone, f => handleFile(f[0]));
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+    async function handleFile(file) {
+      if (!file.name.endsWith('.pdf') && file.type !== 'application/pdf') { showError('Please upload a PDF.'); return; }
+      pdfFile = file;
+      clearError();
+      resultBox.classList.remove('visible');
+      renderFileList([file], fileListEl, () => { pdfFile = null; fileListEl.innerHTML = ''; toolOptions.style.display = 'none'; });
+
+      try {
+        setProgress(20, 'Reading form fields...');
+        const buf    = await readFileAsArrayBuffer(file);
+        const pdfDoc = await PDFDocument.load(buf, { ignoreEncryption: true });
+        const form   = pdfDoc.getForm();
+        const fields = form.getFields();
+
+        formFields = fields.map(f => {
+          const name = f.getName();
+          const type = f.constructor.name.replace('PDF', '').replace('Field', '').toLowerCase();
+          let value = '';
+          let options = [];
+          try {
+            if (type === 'text')     value = f.getText() || '';
+            if (type === 'checkbox') value = f.isChecked() ? 'true' : 'false';
+            if (type === 'dropdown') { options = f.getOptions(); value = f.getSelected()?.[0] || ''; }
+            if (type === 'radiogroup') { options = f.getOptions(); value = f.getSelected() || ''; }
+          } catch(e) {}
+          return { name, type, value, options };
+        });
+
+        renderFields();
+        renderSummary();
+        toolOptions.style.display = 'block';
+
+      } catch (err) {
+        showError('Could not read form: ' + err.message);
+      }
+    }
+
+    function renderSummary() {
+      const counts = formFields.reduce((acc, f) => { acc[f.type] = (acc[f.type] || 0) + 1; return acc; }, {});
+      formSummary.innerHTML = `
+        <div class="summary-chip"><strong>${formFields.length}</strong> total fields</div>
+        ${Object.entries(counts).map(([t, n]) => `<div class="summary-chip"><strong>${n}</strong> ${t}</div>`).join('')}
+      `;
+    }
+
+    function renderFields() {
+      formFieldsEl.innerHTML = '';
+
+      if (!formFields.length) {
+        formFieldsEl.innerHTML = `<div class="no-fields-msg">
+          <div style="font-size:36px;margin-bottom:10px">📋</div>
+          <strong>No fillable fields detected</strong><br>
+          This PDF doesn't appear to have interactive form fields.<br>
+          Try the <a href="edit-pdf.html" style="color:var(--red)">Edit PDF</a> tool to add text manually.
+        </div>`;
+        fillBtn.disabled = true;
+        return;
+      }
+
+      fillBtn.disabled = false;
+
+      // Group by page or just show all
+      const textFields  = formFields.filter(f => f.type === 'text');
+      const checkFields = formFields.filter(f => f.type === 'checkbox');
+      const selectFields= formFields.filter(f => f.type === 'dropdown' || f.type === 'radiogroup');
+      const otherFields = formFields.filter(f => !['text','checkbox','dropdown','radiogroup'].includes(f.type));
+
+      const renderGroup = (label, fields) => {
+        if (!fields.length) return;
+        const hdr = document.createElement('div');
+        hdr.className = 'field-group-header';
+        hdr.textContent = label;
+        formFieldsEl.appendChild(hdr);
+        fields.forEach(f => {
+          const item = document.createElement('div');
+          item.className = 'form-field-item';
+          item.innerHTML = buildFieldHtml(f);
+          formFieldsEl.appendChild(item);
+        });
+      };
+
+      renderGroup('Text Fields', textFields);
+      renderGroup('Checkboxes', checkFields);
+      renderGroup('Dropdowns & Radio Groups', selectFields);
+      renderGroup('Other Fields', otherFields);
+    }
+
+    function buildFieldHtml(f) {
+      const friendlyName = f.name.replace(/[_\-\.]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const badge = `<span class="field-type-badge">${f.type}</span>`;
+
+      if (f.type === 'text') {
+        return `
+          <span class="field-label">${friendlyName} ${badge}</span>
+          <input class="field-input" type="text" data-field="${escHtml(f.name)}" value="${escHtml(f.value)}" placeholder="Enter ${friendlyName.toLowerCase()}..."/>
+        `;
+      }
+      if (f.type === 'checkbox') {
+        const checked = f.value === 'true' ? 'checked' : '';
+        return `
+          <span class="field-label">${friendlyName} ${badge}</span>
+          <label class="field-checkbox">
+            <input type="checkbox" data-field="${escHtml(f.name)}" ${checked}/>
+            <span style="font-size:13px;color:var(--text-secondary)">${friendlyName}</span>
+          </label>
+        `;
+      }
+      if (f.type === 'dropdown') {
+        const opts = f.options.map(o => `<option value="${escHtml(o)}" ${o === f.value ? 'selected' : ''}>${escHtml(o)}</option>`).join('');
+        return `
+          <span class="field-label">${friendlyName} ${badge}</span>
+          <select class="field-input" data-field="${escHtml(f.name)}" style="cursor:pointer">
+            <option value="">— Select —</option>
+            ${opts}
+          </select>
+        `;
+      }
+      if (f.type === 'radiogroup') {
+        const radios = f.options.map(o => `
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+            <input type="radio" name="radio_${escHtml(f.name)}" data-field="${escHtml(f.name)}" value="${escHtml(o)}" ${o === f.value ? 'checked' : ''} style="accent-color:var(--red)"/>
+            ${escHtml(o)}
+          </label>`).join('');
+        return `
+          <span class="field-label">${friendlyName} ${badge}</span>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">${radios}</div>
+        `;
+      }
+      return `<span class="field-label">${friendlyName} ${badge}</span><div style="font-size:12px;color:var(--text-muted)">Unsupported field type</div>`;
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    clearBtn.addEventListener('click', () => {
+      formFieldsEl.querySelectorAll('input[type="text"], select, textarea').forEach(el => el.value = '');
+      formFieldsEl.querySelectorAll('input[type="checkbox"]').forEach(el => el.checked = false);
+      formFieldsEl.querySelectorAll('input[type="radio"]').forEach(el => el.checked = false);
+    });
+
+    fillBtn.addEventListener('click', async () => {
+      if (!pdfFile) return;
+      clearError();
+      fillBtn.disabled = true;
+      progressWrap.style.display = 'block';
+      resultBox.classList.remove('visible');
+
+      try {
+        setProgress(20, 'Loading form...');
+        const buf    = await readFileAsArrayBuffer(pdfFile);
+        const pdfDoc = await PDFDocument.load(buf, { ignoreEncryption: true });
+        const form   = pdfDoc.getForm();
+
+        setProgress(50, 'Filling fields...');
+
+        // Collect values from UI
+        formFieldsEl.querySelectorAll('[data-field]').forEach(el => {
+          const fieldName = el.dataset.field;
+          try {
+            const pdfField = form.getField(fieldName);
+            const type     = pdfField.constructor.name;
+            if (type.includes('Text')) {
+              pdfField.setText(el.value || '');
+            } else if (type.includes('CheckBox')) {
+              el.checked ? pdfField.check() : pdfField.uncheck();
+            } else if (type.includes('Dropdown')) {
+              if (el.value) pdfField.select(el.value);
+            } else if (type.includes('RadioGroup')) {
+              if (el.checked && el.value) pdfField.select(el.value);
+            }
+          } catch(e) { /* skip unsupported */ }
+        });
+
+        setProgress(80, 'Flattening form...');
+        // Flatten so fields become static (optional – comment out to keep editable)
+        try { form.flatten(); } catch(e) {}
+
+        setProgress(95, 'Saving...');
+        const pdfBytes = await pdfDoc.save();
+        setProgress(100, 'Done!');
+
+        const outName = 'filled_' + pdfFile.name;
+        const filled  = formFieldsEl.querySelectorAll('[data-field]').length;
+        resultDesc.textContent = `Form completed with ${filled} field${filled !== 1 ? 's' : ''} filled.`;
+        downloadBtn.onclick = () => downloadFile(pdfBytes, outName);
+        resultBox.classList.add('visible');
+      } catch (err) {
+        showError('Failed to save form: ' + err.message);
+      } finally {
+        fillBtn.disabled = false;
+        progressWrap.style.display = 'none';
+      }
+    });
+
+    function resetTool() {
+      pdfFile = null; formFields = [];
+      fileListEl.innerHTML = '';
+      formFieldsEl.innerHTML = '';
+      formSummary.innerHTML = '';
+      toolOptions.style.display = 'none';
+      resultBox.classList.remove('visible');
+      clearError();
+    }
+  </script>
+
+<script src="../js/header.js"></script>
+<script src="../js/footer.js"></script>
+</body>
+</html>

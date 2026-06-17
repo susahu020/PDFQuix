@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Batch Process PDFs — PDFQuick</title>
+  <title>Batch Process PDFs — PDFQuix</title>
   <meta name="description" content="Process multiple PDFs at once. Batch compress, watermark, add page numbers, or rotate many PDFs in one go. Free, no signup."/>
   <link rel="stylesheet" href="../css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -68,7 +68,7 @@
   </style>
 <script>
 (function(){
-  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
   document.documentElement.setAttribute("data-theme",t);
 })();
 </script>
@@ -430,7 +430,7 @@ async function processFile(file) {
     if (title)   pdfDoc.setTitle(title);
     if (author)  pdfDoc.setAuthor(author);
     if (subject) pdfDoc.setSubject(subject);
-    pdfDoc.setProducer('PDFQuick');
+    pdfDoc.setProducer('PDFQuix');
     return await pdfDoc.save();
 
   } else if (selectedOp === 'grayscale') {

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reorder PDF Pages — PDFQuick</title>
+  <title>Reorder PDF Pages — PDFQuix</title>
   <meta name="description" content="Drag and drop to reorder PDF pages online for free. Rearrange, delete, or duplicate pages. No signup needed."/>
   <link rel="stylesheet" href="../css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -78,7 +78,7 @@
   </style>
 <script>
 (function(){
-  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
   document.documentElement.setAttribute("data-theme",t);
 })();
 </script>
@@ -201,7 +201,11 @@ async function handleFile(file) {
     canvas.width   = viewport.width;
     canvas.height  = viewport.height;
     await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-    pageOrder.push({ origIndex: i - 1, canvas });
+    const canvasCopy = document.createElement('canvas');
+    canvasCopy.width  = canvas.width;
+    canvasCopy.height = canvas.height;
+    canvasCopy.getContext('2d').drawImage(canvas, 0, 0);
+    pageOrder.push({ origIndex: i - 1, canvas: canvasCopy });
   }
 
   renderGrid();
@@ -223,14 +227,17 @@ function renderGrid() {
     badge.className = 'drag-badge';
     badge.textContent = `${i + 1}`;
 
-    const canvasClone = pg.canvas.cloneNode(true);
+    const canvasClone = document.createElement('canvas');
+    canvasClone.width  = pg.canvas.width;
+    canvasClone.height = pg.canvas.height;
+    canvasClone.getContext('2d').drawImage(pg.canvas, 0, 0);
 
     const footer = document.createElement('div');
     footer.className = 'page-card-footer';
 
     const numEl = document.createElement('span');
     numEl.className = 'page-num';
-    numEl.textContent = `Slide ${i + 1}`;
+    numEl.textContent = `Page ${i + 1}`;
 
     const origEl = document.createElement('span');
     origEl.className = 'page-orig';
@@ -301,7 +308,12 @@ function deletePage(idx) {
 
 function duplicatePage(idx) {
   pushUndo();
-  const copy = { ...pageOrder[idx], canvas: pageOrder[idx].canvas.cloneNode(true) };
+  const src = pageOrder[idx].canvas;
+  const canvasCopy = document.createElement('canvas');
+  canvasCopy.width  = src.width;
+  canvasCopy.height = src.height;
+  canvasCopy.getContext('2d').drawImage(src, 0, 0);
+  const copy = { origIndex: pageOrder[idx].origIndex, canvas: canvasCopy };
   pageOrder.splice(idx + 1, 0, copy);
   renderGrid();
 }

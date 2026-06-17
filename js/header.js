@@ -1,5 +1,5 @@
 // ============================================
-// PDFQuick — Header v6
+// PDFQuix — Header v6
 // LEFT: Logo
 // CENTRE: [Compress PDF] [Merge PDF] [e-Sign PDF] | [Convert ▾] [All Tools ▾]
 // RIGHT: Search bar | Dark-mode icon
@@ -14,6 +14,7 @@ const TOOLS = {
       { name: 'Split PDF',     href: 'split.html',       icon: '✂️', desc: 'Extract pages' },
       { name: 'Crop PDF',      href: 'crop.html',        icon: '📐', desc: 'Trim margins', isNew: true },
       { name: 'Repair PDF',    href: 'repair.html',      icon: '🔧', desc: 'Fix corrupt files', isNew: true },
+      { name: 'PDF to PDF/A',  href: 'pdf-to-pdfa.html', icon: '🗄️', desc: 'Archival format', isNew: true },
     ]
   },
   organise: {
@@ -26,6 +27,7 @@ const TOOLS = {
       { name: 'Rotate PDF',     href: 'rotate.html',       icon: '🔄', desc: 'Fix orientation' },
       { name: 'Page numbers',   href: 'page-numbers.html', icon: '#️⃣', desc: 'Add numbering' },
       { name: 'Batch process',  href: 'batch.html',        icon: '⚙️', desc: 'Process many files' },
+      { name: 'Scan to PDF',    href: 'scan-to-pdf.html',  icon: '📷', desc: 'Photos to PDF', isNew: true },
     ]
   },
   convert: {
@@ -47,11 +49,13 @@ const TOOLS = {
     desc: 'Mark up & compare',
     tools: [
       { name: 'Annotate PDF', href: 'annotate.html',     icon: '🖊️', desc: 'Highlight & draw', isNew: true },
+      { name: 'Edit PDF',     href: 'edit-pdf.html',     icon: '✏️', desc: 'Text, draw, highlight', isNew: true },
       { name: 'Compare PDFs', href: 'compare.html',      icon: '🔍', desc: 'Find changes', isNew: true },
       { name: 'Extract text', href: 'extract-text.html', icon: '📋', desc: 'Copy as .txt', isNew: true },
       { name: 'Redact PDF',   href: 'redact.html',       icon: '🚫', desc: 'Hide sensitive data' },
       { name: 'Watermark',    href: 'watermark.html',    icon: '💧', desc: 'Add text/image' },
       { name: 'Fill forms',   href: 'fill-forms.html',   icon: '📝', desc: 'Complete PDF forms' },
+      { name: 'PDF Forms',    href: 'pdf-forms.html',    icon: '📋', desc: 'View & fill fields', isNew: true },
     ]
   },
   secure: {
@@ -178,7 +182,7 @@ function buildHeader(isToolPage) {
   <div class="mob-overlay" id="mobOverlay">
     <div class="mob-overlay-inner">
       <div class="mob-header">
-        <a href="${homeHref}" class="logo" onclick="closeMob()">${LOGO_SVG} PDFQuick</a>
+        <a href="${homeHref}" class="logo" onclick="closeMob()">${LOGO_SVG} PDFQuix</a>
         <button class="mob-close" onclick="closeMob()" aria-label="Close">✕</button>
       </div>
       <div class="mob-search-wrap">
@@ -210,7 +214,7 @@ function buildHeader(isToolPage) {
       <!-- LEFT: Logo -->
       <a href="${homeHref}" class="logo">
         ${LOGO_SVG}
-        PDFQuick
+        PDFQuix
       </a>
 
       <!-- CENTRE nav -->
@@ -433,11 +437,11 @@ function applyTheme(t) {
 function toggleDarkMode() {
   const cur  = document.documentElement.getAttribute('data-theme') || 'light';
   const next = cur === 'dark' ? 'light' : 'dark';
-  localStorage.setItem('pdfquick-theme', next);
+  localStorage.setItem('PDFQuix-theme', next);
   applyTheme(next);
 }
 (function() {
-  const saved = localStorage.getItem('pdfquick-theme')
+  const saved = localStorage.getItem('PDFQuix-theme')
     || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   applyTheme(saved);
 })();
@@ -450,7 +454,7 @@ document.addEventListener('DOMContentLoaded', function () {
   document.querySelectorAll('header.header, .hdd-backdrop, .mob-overlay').forEach(el => el.remove());
   document.body.insertAdjacentHTML('afterbegin', buildHeader(isToolPage));
   setupHover();
-  const saved = localStorage.getItem('pdfquick-theme')
+  const saved = localStorage.getItem('PDFQuix-theme')
     || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   applyTheme(saved);
 });

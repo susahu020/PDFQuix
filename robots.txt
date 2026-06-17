@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://pdfquick.com/sitemap.xml
+Sitemap: https://PDFQuix.com/sitemap.xml
 
 # Disallow admin/dev files
 Disallow: /js/

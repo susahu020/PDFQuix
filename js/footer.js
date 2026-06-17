@@ -1,5 +1,5 @@
 // ============================================
-// PDFQuick — Multi-column Footer v2
+// PDFQuix — Multi-column Footer v2
 // ============================================
 function buildFooter(isToolPage) {
   const prefix = isToolPage ? '../' : '';
@@ -16,7 +16,7 @@ function buildFooter(isToolPage) {
             <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
             <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
           </svg>
-          PDFQuick
+          PDFQuix
         </a>
         <p>100% free, privacy-first PDF tools. No login, no limits, no nonsense. All processing in your browser.</p>
         <div class="footer-badges">
@@ -89,7 +89,7 @@ function buildFooter(isToolPage) {
 
   <div class="footer-bottom">
     <div class="container" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-      <span class="footer-bottom-left">© ${new Date().getFullYear()} PDFQuick · All tools are free forever</span>
+      <span class="footer-bottom-left">© ${new Date().getFullYear()} PDFQuix · All tools are free forever</span>
       <span class="footer-bottom-right">Made with <span class="heart">♥</span> · Privacy First · No Login Required</span>
     </div>
   </div>

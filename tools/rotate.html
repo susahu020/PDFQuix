@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Rotate PDF Pages — PDFQuick</title>
+  <title>Rotate PDF Pages — PDFQuix</title>
   <meta name="description" content="Rotate individual or all PDF pages online for free. Rotate 90°, 180°, or 270°. No signup needed."/>
   <link rel="stylesheet" href="../css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -24,8 +24,9 @@
       width: 100%; height: 130px;
       display: flex; align-items: center; justify-content: center;
       background: #f1f5f9; padding: 8px;
+      overflow: hidden;
     }
-    .page-canvas-wrap canvas { max-width: 100%; max-height: 114px; display: block; box-shadow: var(--shadow-sm); transition: transform .3s; }
+    .page-canvas-wrap canvas { max-width: 100%; max-height: 114px; display: block; box-shadow: var(--shadow-sm); transition: transform .35s ease; transform-origin: center center; }
     .page-card-footer {
       width: 100%; padding: 8px; border-top: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between; gap: 4px;
@@ -57,7 +58,7 @@
   </style>
 <script>
 (function(){
-  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
   document.documentElement.setAttribute("data-theme",t);
 })();
 </script>
@@ -164,7 +165,8 @@
 
       try {
         const buf    = await readFileAsArrayBuffer(file);
-        const pdfDoc = await pdfjsLib.getDocument({ data: buf }).promise;
+        // Slice a copy so pdfjs worker doesn't detach the original buffer
+        const pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(buf.slice(0)) }).promise;
         totalPages   = pdfDoc.numPages;
         rotations    = new Array(totalPages).fill(0);
 
@@ -195,9 +197,15 @@
 
         const wrap = document.createElement('div');
         wrap.className = 'page-canvas-wrap';
-        const clone = canvas.cloneNode(true); // clone to allow CSS rotation
-        clone.style.transform = `rotate(${rotations[i]}deg)`;
-        wrap.appendChild(clone);
+
+        // drawImage copy — cloneNode(true) creates an empty canvas (no pixel data)
+        const copy = document.createElement('canvas');
+        copy.width  = canvas.width;
+        copy.height = canvas.height;
+        copy.getContext('2d').drawImage(canvas, 0, 0);
+        copy.style.transformOrigin = 'center center';
+        // applyCanvasRotation called after card is in DOM (rotations start at 0 so no-op now)
+        wrap.appendChild(copy);
 
         const badge = document.createElement('div');
         badge.className = 'rotation-badge';
@@ -220,11 +228,26 @@
       });
     }
 
+    function applyCanvasRotation(canvasEl, deg) {
+      const norm = ((deg % 360) + 360) % 360;
+      // For 90° / 270° the canvas is landscape-in-portrait box — scale it down to fit
+      if (norm === 90 || norm === 270) {
+        const wrap = canvasEl.parentElement;
+        const boxW = wrap.clientWidth  || 134;
+        const boxH = wrap.clientHeight || 114;
+        const scaleX = boxH / canvasEl.width;
+        const scaleY = boxW / canvasEl.height;
+        const scale  = Math.min(scaleX, scaleY, 1);
+        canvasEl.style.transform = `rotate(${norm}deg) scale(${scale})`;
+      } else {
+        canvasEl.style.transform = `rotate(${norm}deg)`;
+      }
+    }
+
     function rotatePage(idx, deg) {
       rotations[idx] = (rotations[idx] + deg + 360) % 360;
-      // Update canvas rotation in DOM
-      const wrap = document.querySelector(`#card-${idx} .page-canvas-wrap canvas`);
-      if (wrap) wrap.style.transform = `rotate(${rotations[idx]}deg)`;
+      const canvasEl = document.querySelector(`#card-${idx} .page-canvas-wrap canvas`);
+      if (canvasEl) applyCanvasRotation(canvasEl, rotations[idx]);
       const badge = document.getElementById(`badge-${idx}`);
       if (badge) badge.textContent = rotations[idx] === 0 ? '0°' : `${rotations[idx]}°`;
     }

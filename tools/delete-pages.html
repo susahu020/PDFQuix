@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Delete PDF Pages — PDFQuick</title>
+  <title>Delete PDF Pages — PDFQuix</title>
   <meta name="description" content="Remove specific pages from a PDF file online for free. Preview pages and select which ones to delete. No signup required."/>
   <link rel="stylesheet" href="../css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -66,7 +66,7 @@
   </style>
 <script>
 (function(){
-  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
   document.documentElement.setAttribute("data-theme",t);
 })();
 </script>
@@ -159,7 +159,9 @@
       if (!file || !file.name.endsWith('.pdf')) { showError('Please upload a PDF.'); return; }
       clearError();
       originalBytes = await readFileAsArrayBuffer(file);
-      pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(originalBytes) }).promise;
+      // Copy the buffer for pdfjs — its worker transfers (detaches) the ArrayBuffer,
+      // so we keep originalBytes intact for pdf-lib to use later.
+      pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(originalBytes.slice(0)) }).promise;
       totalPages = pdfJsDoc.numPages;
       selectedPages.clear();
       dropzone.style.display = 'none';
@@ -184,10 +186,18 @@
         const thumb = document.createElement('div');
         thumb.className = 'page-thumb';
         thumb.dataset.page = i;
-        thumb.innerHTML = `<div class="delete-badge">✕</div>`;
+
+        const badge = document.createElement('div');
+        badge.className = 'delete-badge';
+        badge.textContent = '✕';
+
+        const label = document.createElement('div');
+        label.className = 'page-label';
+        label.textContent = `Page ${i}`;
+
+        thumb.appendChild(badge);
         thumb.appendChild(canvas);
-        thumb.innerHTML += `<div class="page-label">Page ${i}</div>`;
-        thumb.querySelector('canvas').before(thumb.querySelector('.delete-badge'));
+        thumb.appendChild(label);
         thumb.addEventListener('click', () => togglePage(i, thumb));
         thumbs.push(thumb);
       }
