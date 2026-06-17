@@ -1,4 +1,4 @@
-# PDFQuick — Complete Beginner's Setup Guide
+# PDFQuix — Complete Beginner's Setup Guide
 
 ## What you've built
 
@@ -65,7 +65,7 @@ pdftools/
 4. Drag and drop your entire `pdftools` folder onto the page
 5. Done! Netlify gives you a URL like `https://random-name.netlify.app`
 
-**To use a custom domain later (e.g. pdfquick.com):**
+**To use a custom domain later (e.g. PDFQuix.com):**
 - Buy a domain on Namecheap or Google Domains (~$10/year)
 - In Netlify → Site settings → Domain management → Add custom domain
 - Follow the DNS instructions Netlify gives you
@@ -81,17 +81,17 @@ pdftools/
 ### Option C: GitHub Pages (free forever)
 
 1. Create a free GitHub account at https://github.com
-2. Create a new repository called `pdfquick` (or any name)
+2. Create a new repository called `PDFQuix` (or any name)
 3. Upload all your files to the repository
 4. Go to Settings → Pages → Source → select "main" branch
-5. Your site is live at `https://yourusername.github.io/pdfquick`
+5. Your site is live at `https://yourusername.github.io/PDFQuix`
 
 ---
 
 ## Step 3 — Give your site a proper name
 
-Change "PDFQuick" throughout the files to your own brand name.
-Search and replace `PDFQuick` in all HTML files.
+Change "PDFQuix" throughout the files to your own brand name.
+Search and replace `PDFQuix` in all HTML files.
 
 Also update in `index.html`:
 ```html
