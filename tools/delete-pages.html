@@ -240,8 +240,15 @@
     }
 
     async function deletePages() {
-      if (selectedPages.size === 0 || selectedPages.size === totalPages) return;
       clearError();
+      if (selectedPages.size === 0) {
+        showError('Please select at least one page to delete.');
+        return;
+      }
+      if (selectedPages.size === totalPages) {
+        showError('You can\'t delete every page — a PDF needs at least one page left. Deselect at least one page and try again.');
+        return;
+      }
       document.getElementById('progressWrap').style.display = 'block';
       setProgress(20, 'Loading PDF…');
 

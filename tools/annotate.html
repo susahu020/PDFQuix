@@ -238,7 +238,11 @@
       if (!file || !file.name.endsWith('.pdf')) { showError('Please upload a PDF file.'); return; }
       clearError();
       originalBytes = await readFileAsArrayBuffer(file);
-      const typedArr = new Uint8Array(originalBytes);
+      // IMPORTANT: pdf.js transfers the buffer backing this Uint8Array to its worker
+      // thread (for zero-copy performance), which detaches the original ArrayBuffer.
+      // We pass pdf.js a clone (.slice(0)) so `originalBytes` stays valid for the
+      // later PDFDocument.load(originalBytes) call in savePDF().
+      const typedArr = new Uint8Array(originalBytes.slice(0));
       pdfJsDoc = await pdfjsLib.getDocument({ data: typedArr }).promise;
       totalPages = pdfJsDoc.numPages;
       currentPage = 1;

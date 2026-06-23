@@ -139,7 +139,18 @@
 
   <script src="../js/utils.js"></script>
   <script>
-    const { PDFDocument, PDFName } = PDFLib;
+    const { PDFDocument, PDFName, PDFTextField, PDFCheckBox, PDFRadioGroup, PDFDropdown } = PDFLib;
+
+    // Minification-safe field type detection. `field.constructor.name` breaks once
+    // pdf-lib is loaded from a minified bundle (class names get mangled to single
+    // letters), so we use `instanceof` against pdf-lib's actual exported classes.
+    function getFieldTypeSlug(field) {
+      if (field instanceof PDFTextField)   return 'text';
+      if (field instanceof PDFCheckBox)    return 'checkbox';
+      if (field instanceof PDFRadioGroup)  return 'radiogroup';
+      if (field instanceof PDFDropdown)    return 'dropdown';
+      return 'other';
+    }
 
     let pdfFile = null;
     let formFields = []; // Parsed field info
@@ -176,7 +187,7 @@
 
         formFields = fields.map(f => {
           const name = f.getName();
-          const type = f.constructor.name.replace('PDF', '').replace('Field', '').toLowerCase();
+          const type = getFieldTypeSlug(f);
           let value = '';
           let options = [];
           try {
@@ -321,14 +332,14 @@
           const fieldName = el.dataset.field;
           try {
             const pdfField = form.getField(fieldName);
-            const type     = pdfField.constructor.name;
-            if (type.includes('Text')) {
+            const type     = getFieldTypeSlug(pdfField);
+            if (type === 'text') {
               pdfField.setText(el.value || '');
-            } else if (type.includes('CheckBox')) {
+            } else if (type === 'checkbox') {
               el.checked ? pdfField.check() : pdfField.uncheck();
-            } else if (type.includes('Dropdown')) {
+            } else if (type === 'dropdown') {
               if (el.value) pdfField.select(el.value);
-            } else if (type.includes('RadioGroup')) {
+            } else if (type === 'radiogroup') {
               if (el.checked && el.value) pdfField.select(el.value);
             }
           } catch(e) { /* skip unsupported */ }

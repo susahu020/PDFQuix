@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="../css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     .mode-tabs {
       display: flex; border-bottom: 2px solid var(--border); margin-bottom: 20px;
@@ -230,18 +231,23 @@
 
   const marginMap = { normal: '20mm', narrow: '10mm', wide: '30mm', none: '0' };
 
-  function buildFullHTML(body) {
+  function buildFullHTML(body, pageWidthPx) {
     const margin = marginMap[document.getElementById('margins').value] || '20mm';
     if (body.includes('<html') || body.includes('<!DOCTYPE')) return body;
+    const widthRule = pageWidthPx ? `width:${pageWidthPx}px;` : 'width:100%;';
     return `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <style>
-      body { font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #1a1a1a; margin: ${margin}; padding: 0; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; background: #fff; }
+      #pdfqx-page {
+        ${widthRule} padding: ${margin};
+        font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #1a1a1a;
+        background: #fff;
+      }
       h1,h2,h3 { color: #111; margin-top: 1.4em; } table { border-collapse: collapse; width: 100%; }
       th,td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; }
       th { background: #f5f5f5; font-weight: 600; }
-    </style></head><body>${body}<script src="../js/header.js"><\/script>
-<script src="../js/footer.js"><\/script>
-</body></html>`;
+    </style></head><body><div id="pdfqx-page">${body}</div></body></html>`;
   }
 
   function updatePreview() {
@@ -257,45 +263,99 @@
     updatePreview();
   }
 
-  function convertToPDF() {
+  const PAGE_SIZES_MM = { letter: [215.9, 279.4], a3: [297, 420], a4: [210, 297] };
+  const PX_PER_MM = 96 / 25.4;        // CSS pixels at 96 DPI
+  const RENDER_SCALE = 2;             // extra multiplier for a sharper raster
+  const PT_PER_MM = 2.8346456693;
+
+  async function convertToPDF() {
     clearError();
     const html = getHTML();
     if (!html) { showError('Please enter some HTML or text first.'); return; }
 
-    const full = buildFullHTML(html);
-    const margin = marginMap[document.getElementById('margins').value];
     const size = document.getElementById('pageSize').value;
     const orient = document.getElementById('pageOrient').value;
-    const name = document.getElementById('outName').value || 'document.pdf';
+    let [wMM, hMM] = PAGE_SIZES_MM[size] || PAGE_SIZES_MM.a4;
+    if (orient === 'landscape') { [wMM, hMM] = [hMM, wMM]; }
 
-    // Use browser print API via a hidden iframe
-    const printFrame = document.createElement('iframe');
-    printFrame.style.cssText = 'position:fixed;width:0;height:0;border:0;left:-9999px;top:-9999px;';
-    document.body.appendChild(printFrame);
+    const pageWidthPx  = Math.round(wMM * PX_PER_MM);
+    const pageHeightPx = Math.round(hMM * PX_PER_MM);
+    const pageWidthPt  = wMM * PT_PER_MM;
+    const pageHeightPt = hMM * PT_PER_MM;
 
-    const sizeCSS = size==='letter'?'letter':size==='a3'?'A3':'A4';
-    const orientCSS = orient==='landscape'?'landscape':'portrait';
-    const printHTML = full.replace('</style>', `
-      @media print {
-        @page { size: ${sizeCSS} ${orientCSS}; margin: ${margin}; }
-        body { margin: 0 !important; }
+    let rawName = (document.getElementById('outName').value || 'document.pdf').trim();
+    if (!rawName) rawName = 'document.pdf';
+    if (!/\.pdf$/i.test(rawName)) rawName += '.pdf';
+
+    const convertBtn = document.querySelector('button[onclick="convertToPDF()"]');
+    if (convertBtn) convertBtn.disabled = true;
+
+    const full = buildFullHTML(html, pageWidthPx);
+
+    const frame = document.createElement('iframe');
+    frame.style.cssText = `position:fixed; left:-99999px; top:0; width:${pageWidthPx}px; height:0; border:0;`;
+    document.body.appendChild(frame);
+
+    try {
+      await new Promise((resolve, reject) => {
+        frame.onload = resolve;
+        frame.onerror = () => reject(new Error('Could not render the content.'));
+        frame.srcdoc = full;
+      });
+      // let images/web fonts settle
+      await new Promise(r => setTimeout(r, 200));
+
+      const target = frame.contentDocument.getElementById('pdfqx-page');
+      if (!target) throw new Error('Could not find content to render.');
+
+      const canvas = await html2canvas(target, {
+        scale: RENDER_SCALE,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        windowWidth: pageWidthPx,
+      });
+
+      const sliceHeightPx = pageHeightPx * RENDER_SCALE;
+      const totalHeightPx = canvas.height;
+      const numPages = Math.max(1, Math.ceil(totalHeightPx / sliceHeightPx));
+
+      const pdfDoc = await PDFDocument.create();
+
+      for (let i = 0; i < numPages; i++) {
+        const sliceTop = i * sliceHeightPx;
+        const thisSliceHeight = Math.min(sliceHeightPx, totalHeightPx - sliceTop);
+
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = thisSliceHeight;
+        const ctx = sliceCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        ctx.drawImage(canvas, 0, sliceTop, canvas.width, thisSliceHeight, 0, 0, canvas.width, thisSliceHeight);
+
+        const blob = await new Promise(res => sliceCanvas.toBlob(res, 'image/jpeg', 0.92));
+        const imgBytes = new Uint8Array(await blob.arrayBuffer());
+        const jpgImage = await pdfDoc.embedJpg(imgBytes);
+
+        const page = pdfDoc.addPage([pageWidthPt, pageHeightPt]);
+        const drawHeightPt = (thisSliceHeight / sliceHeightPx) * pageHeightPt;
+        page.drawImage(jpgImage, { x: 0, y: pageHeightPt - drawHeightPt, width: pageWidthPt, height: drawHeightPt });
       }
-    </style>`);
 
-    printFrame.srcdoc = printHTML;
-    printFrame.onload = () => {
-      try {
-        printFrame.contentWindow.focus();
-        printFrame.contentWindow.print();
-        document.getElementById('resultDesc').textContent = 'Your browser\'s print dialog has opened. Choose "Save as PDF" to download.';
-        document.getElementById('downloadBtn').style.display = 'none';
-        document.getElementById('resultBox').classList.add('visible');
-        document.getElementById('resultBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      } catch(e) {
-        showError('Print dialog failed: ' + e.message);
-      }
-      setTimeout(() => { try { document.body.removeChild(printFrame); } catch(_){} }, 3000);
-    };
+      const pdfBytes = await pdfDoc.save();
+
+      document.getElementById('resultDesc').textContent =
+        `Generated a ${numPages}-page PDF (${formatBytes(pdfBytes.length)}). Note: the page is rendered as an image, so text in the downloaded PDF won't be selectable or searchable.`;
+      document.getElementById('downloadBtn').style.display = '';
+      document.getElementById('downloadBtn').onclick = () => downloadFile(pdfBytes, rawName);
+      document.getElementById('resultBox').classList.add('visible');
+      document.getElementById('resultBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (e) {
+      showError('Failed to generate PDF: ' + e.message);
+    } finally {
+      if (convertBtn) convertBtn.disabled = false;
+      try { document.body.removeChild(frame); } catch(_) {}
+    }
   }
 
   function resetResult() {

@@ -317,6 +317,42 @@ function clearAllRedactions() {
   updateCount();
 }
 
+// Renders a page to a flattened JPEG with redaction boxes burned in, at
+// a resolution high enough to keep text crisp (2x the on-screen scale,
+// capped so huge pages don't blow up memory/time).
+async function renderRedactedPageToJpeg(pageNum, rects) {
+  const pjsPage = await pdfJsDoc.getPage(pageNum);
+  const vp0     = pjsPage.getViewport({ scale: 1 });
+  const renderScale = Math.min(viewScale * 2, 3);
+  const viewport = pjsPage.getViewport({ scale: renderScale });
+
+  const canvas = document.createElement('canvas');
+  canvas.width  = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext('2d');
+  await pjsPage.render({ canvasContext: ctx, viewport }).promise;
+
+  // Redaction boxes were recorded in on-screen canvas pixels (at
+  // viewScale). Scale them up to match this higher-res render.
+  const boxScale = renderScale / viewScale;
+  rects.forEach(r => {
+    const x = Math.min(r.x, r.x + r.w) * boxScale;
+    const y = Math.min(r.y, r.y + r.h) * boxScale;
+    const w = Math.abs(r.w) * boxScale;
+    const h = Math.abs(r.h) * boxScale;
+    ctx.fillStyle = r.color;
+    ctx.fillRect(x, y, w, h);
+  });
+
+  return {
+    dataUrl: canvas.toDataURL('image/jpeg', 0.92),
+    pxWidth: canvas.width,
+    pxHeight: canvas.height,
+    ptWidth: vp0.width,
+    ptHeight: vp0.height,
+  };
+}
+
 applyBtn.addEventListener('click', async () => {
   const totalR = Object.values(redactions).reduce((s, a) => s + a.length, 0);
   if (totalR === 0) { showError('Please draw at least one redaction box.'); return; }
@@ -326,47 +362,51 @@ applyBtn.addEventListener('click', async () => {
   resultBox.classList.remove('visible');
 
   try {
-    setProgress(20, 'Loading PDF...');
-    const buf    = await readFileAsArrayBuffer(pdfFile);
-    const pdfDoc = await PDFDocument.load(buf, { ignoreEncryption: true });
-    const pages  = pdfDoc.getPages();
+    setProgress(15, 'Loading PDF...');
+    const buf       = await readFileAsArrayBuffer(pdfFile);
+    const pdfDoc    = await PDFDocument.load(buf, { ignoreEncryption: true });
+    const redactedPageNums = Object.keys(redactions)
+      .filter(k => redactions[k] && redactions[k].length > 0)
+      .map(Number)
+      .sort((a, b) => a - b);
 
-    setProgress(50, 'Applying redactions...');
+    let done = 0;
+    for (const pageNum of redactedPageNums) {
+      setProgress(20 + Math.round((done / redactedPageNums.length) * 60),
+        `Flattening page ${pageNum}...`);
 
-    for (const [pageNumStr, rects] of Object.entries(redactions)) {
-      const pageNum = parseInt(pageNumStr);
-      const page    = pages[pageNum - 1];
-      if (!page) continue;
-      const { width: pw, height: ph } = page.getSize();
+      const rects = redactions[pageNum];
+      const { dataUrl, ptWidth, ptHeight } = await renderRedactedPageToJpeg(pageNum, rects);
 
-      // Get page rendered size
-      const pjsPage  = await pdfJsDoc.getPage(pageNum);
-      const vp0      = pjsPage.getViewport({ scale: 1 });
-      const scaleX   = pw / (vp0.width  * viewScale);
-      const scaleY   = ph / (vp0.height * viewScale);
+      // Embed the flattened (redacted) image as a brand-new page and
+      // discard the original page's content stream entirely — this is
+      // what actually makes the underlying text unrecoverable, rather
+      // than just visually covering it.
+      const jpegBytes = await (await fetch(dataUrl)).arrayBuffer();
+      const jpegImage = await pdfDoc.embedJpg(jpegBytes);
 
-      rects.forEach(r => {
-        const x  = r.x * scaleX;
-        const y  = ph - (r.y + r.h) * scaleY;
-        const w  = Math.abs(r.w) * scaleX;
-        const h  = Math.abs(r.h) * scaleY;
+      const oldPage = pdfDoc.getPage(pageNum - 1);
+      const newPage = pdfDoc.insertPage(pageNum - 1, [ptWidth, ptHeight]);
+      newPage.drawImage(jpegImage, { x: 0, y: 0, width: ptWidth, height: ptHeight });
+      pdfDoc.removePage(pageNum); // removes the old page, now shifted one index later
 
-        // Parse hex color to rgb 0-1
-        const hex = r.color.replace('#','');
-        const rv  = parseInt(hex.slice(0,2),16)/255;
-        const gv  = parseInt(hex.slice(2,4),16)/255;
-        const bv  = parseInt(hex.slice(4,6),16)/255;
-
-        page.drawRectangle({ x, y: r.h < 0 ? y + h : y, width: w, height: h, color: rgb(rv, gv, bv), borderWidth: 0 });
-      });
+      done++;
     }
 
-    setProgress(90, 'Saving...');
+    setProgress(85, 'Cleaning up metadata...');
+    // Strip metadata too — redaction is meaningless if sensitive info
+    // leaks back out via the document properties.
+    pdfDoc.setTitle('');
+    pdfDoc.setAuthor('');
+    pdfDoc.setSubject('');
+    pdfDoc.setKeywords([]);
+
+    setProgress(95, 'Saving...');
     const pdfBytes = await pdfDoc.save();
     setProgress(100, 'Done!');
 
-    const pageCount = Object.keys(redactions).length;
-    resultDesc.textContent = `${totalR} redaction${totalR !== 1 ? 's' : ''} applied across ${pageCount} page${pageCount !== 1 ? 's' : ''}.`;
+    const pageCount = redactedPageNums.length;
+    resultDesc.textContent = `${totalR} redaction${totalR !== 1 ? 's' : ''} applied across ${pageCount} page${pageCount !== 1 ? 's' : ''}. Redacted pages are flattened to images so the original text underneath cannot be recovered.`;
     downloadBtn.onclick = () => downloadFile(pdfBytes, 'redacted_' + pdfFile.name);
     resultBox.classList.add('visible');
 

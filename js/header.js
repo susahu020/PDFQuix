@@ -229,7 +229,6 @@ function buildHeader(isToolPage) {
         <!-- Convert category dropdown -->
         <div class="hdd-item" data-id="convert">
           <button class="hdd-trigger" aria-haspopup="true" aria-expanded="false">
-            <span class="hdd-trigger-icon">${convertCat.icon}</span>
             Convert
             <svg class="hdd-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -243,7 +242,6 @@ function buildHeader(isToolPage) {
         <!-- All Tools mega dropdown -->
         <div class="hdd-item hdd-item--all" data-id="alltools">
           <button class="hdd-trigger hdd-trigger--all" aria-haspopup="true" aria-expanded="false">
-            <span class="hdd-trigger-icon">📄</span>
             All Tools
             <svg class="hdd-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>

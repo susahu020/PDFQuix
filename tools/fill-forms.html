@@ -159,7 +159,18 @@
 <script src="../js/utils.js"></script>
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-const { PDFDocument } = PDFLib;
+const { PDFDocument, PDFTextField, PDFCheckBox, PDFRadioGroup, PDFDropdown } = PDFLib;
+
+// Minification-safe field type detection. `field.constructor.name` breaks once
+// pdf-lib is loaded from a minified bundle (class names get mangled), so we use
+// `instanceof` against the classes pdf-lib actually exports instead.
+function getFieldTypeName(field) {
+  if (field instanceof PDFTextField)   return 'PDFTextField';
+  if (field instanceof PDFCheckBox)    return 'PDFCheckBox';
+  if (field instanceof PDFRadioGroup)  return 'PDFRadioGroup';
+  if (field instanceof PDFDropdown)    return 'PDFDropdown';
+  return 'Unknown';
+}
 
 let pdfFile   = null;
 let pdfLibDoc = null;
@@ -231,7 +242,7 @@ function renderFields(form, fields) {
 
   fields.forEach((field, idx) => {
     const name     = field.getName();
-    const typeName = field.constructor.name; // PDFTextField, PDFCheckBox, etc.
+    const typeName = getFieldTypeName(field); // 'PDFTextField', 'PDFCheckBox', etc. — minification-safe
     let type, badge, inputEl;
 
     const row = document.createElement('div');
@@ -366,7 +377,7 @@ fillBtn.addEventListener('click', async () => {
     fields.forEach((field, idx) => {
       const entry    = fieldData[idx];
       if (!entry) return;
-      const typeName = field.constructor.name;
+      const typeName = getFieldTypeName(field);
 
       try {
         if (typeName === 'PDFTextField' && entry.value) {

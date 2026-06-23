@@ -273,7 +273,7 @@
           setProgress(95, 'Zipping...');
           const zipBlob = await zip.generateAsync({ type: 'blob' });
           setProgress(100, 'Done!');
-          resultDesc.textContent = `${pagesToExtract.length} pages extracted into a ZIP archive.`;
+          resultDesc.textContent = `${pagesToExtract.length} page${pagesToExtract.length === 1 ? '' : 's'} extracted into a ZIP archive.`;
           downloadBtn.onclick = () => downloadFile(zipBlob, 'split_pages.zip', 'application/zip');
 
         } else {
