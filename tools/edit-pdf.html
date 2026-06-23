@@ -5,22 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Edit PDF — Add Text, Draw & Highlight — PDFQuick</title>
   <meta name="description" content="Add text, draw freehand lines, and highlight content directly on your PDF. Download the edited file instantly. Free, no signup."/>
+  <title>Edit PDF — Add Text, Draw & Highlight — PDFQuick</title>
+  <meta name="description" content="Add text, draw freehand lines, and highlight content directly on your PDF. Download the edited file instantly. Free, no signup."/>
   <link rel="stylesheet" href="../css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <style>
     .editor-toolbar {
       display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
       background: var(--white); border: 1px solid var(--border);
       border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 16px;
     }
+    .tool-group { display: flex; align-items: center; gap: 6px; }
     .tool-group { display: flex; align-items: center; gap: 6px; }
     .tool-btn {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 8px 14px; border-radius: var(--radius-sm);
       border: 1.5px solid var(--border); background: var(--white);
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border); background: var(--white);
       font-size: 13px; font-weight: 500; cursor: pointer;
+      transition: all .15s; color: var(--text-primary); white-space: nowrap;
       transition: all .15s; color: var(--text-primary); white-space: nowrap;
     }
     .tool-btn:hover { border-color: var(--red); background: #fff8f8; }
@@ -110,6 +121,7 @@
 <script>
 (function(){
   var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
   document.documentElement.setAttribute("data-theme",t);
 })();
 </script>
@@ -118,10 +130,13 @@
 
 
 
+
+
   <section class="tool-page-hero">
     <div class="container">
       <a href="../index.html" class="back-link">← All tools</a>
       <h1>Edit PDF</h1>
+      <p>Add text, draw freehand lines, and highlight content directly on your PDF. Download the edited file instantly.</p>
       <p>Add text, draw freehand lines, and highlight content directly on your PDF. Download the edited file instantly.</p>
     </div>
   </section>
@@ -139,6 +154,7 @@
         </button>
       </div>
 
+      <div id="editorWrap" style="display:none; margin-top:24px;">
       <div id="editorWrap" style="display:none; margin-top:24px;">
 
         <div class="editor-toolbar">
@@ -166,8 +182,22 @@
             <div class="color-swatch" style="background:#2563EB" data-color="#2563EB" title="Blue"></div>
             <div class="color-swatch" style="background:#16A34A" data-color="#16A34A" title="Green"></div>
             <div class="color-swatch" style="background:#F59E0B" data-color="#F59E0B" title="Orange"></div>
+          <span class="toolbar-label">Color:</span>
+          <div class="color-row" id="colorRow">
+            <div class="color-swatch selected" style="background:#0F172A" data-color="#0F172A" title="Black"></div>
+            <div class="color-swatch" style="background:#E63946" data-color="#E63946" title="Red"></div>
+            <div class="color-swatch" style="background:#2563EB" data-color="#2563EB" title="Blue"></div>
+            <div class="color-swatch" style="background:#16A34A" data-color="#16A34A" title="Green"></div>
+            <div class="color-swatch" style="background:#F59E0B" data-color="#F59E0B" title="Orange"></div>
           </div>
 
+          <div class="toolbar-divider"></div>
+
+          <span class="toolbar-label">Size:</span>
+          <div class="size-row">
+            <input type="range" id="sizeSlider" min="8" max="48" value="16"/>
+            <span id="sizeLabel">16</span>
+          </div>
           <div class="toolbar-divider"></div>
 
           <span class="toolbar-label">Size:</span>
@@ -199,6 +229,8 @@
 
         <div class="action-bar" style="margin-top:20px;">
           <button class="btn-action" id="saveBtn" onclick="savePDF()">⬇ Save & Download PDF</button>
+        <div class="action-bar" style="margin-top:20px;">
+          <button class="btn-action" id="saveBtn" onclick="savePDF()">⬇ Save & Download PDF</button>
           <div class="progress-wrap" id="progressWrap" style="display:none">
             <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
             <div class="progress-label">Saving...</div>
@@ -222,6 +254,10 @@
           <div class="step"><div class="step-num">2</div><h4>Pick a tool</h4><p>Add text, draw, or highlight — right on the page.</p></div>
           <div class="step"><div class="step-num">3</div><h4>Edit</h4><p>Click to place text, drag to draw or highlight.</p></div>
           <div class="step"><div class="step-num">4</div><h4>Save</h4><p>Download your edited PDF with one click.</p></div>
+          <div class="step"><div class="step-num">1</div><h4>Upload your PDF</h4><p>Drop or browse any PDF file.</p></div>
+          <div class="step"><div class="step-num">2</div><h4>Pick a tool</h4><p>Add text, draw, or highlight — right on the page.</p></div>
+          <div class="step"><div class="step-num">3</div><h4>Edit</h4><p>Click to place text, drag to draw or highlight.</p></div>
+          <div class="step"><div class="step-num">4</div><h4>Save</h4><p>Download your edited PDF with one click.</p></div>
         </div>
       </div>
 
@@ -229,9 +265,11 @@
   </section>
 
 
+
   <script src="../js/utils.js"></script>
   <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const { PDFDocument, rgb, StandardFonts } = PDFLib;
     const { PDFDocument, rgb, StandardFonts } = PDFLib;
 
     let pdfJsDoc = null, currentPage = 1, totalPages = 1;
@@ -270,10 +308,43 @@
       document.getElementById('sizeLabel').textContent = activeSize;
       if (activeTextBox) activeTextBox.style.fontSize = activeSize + 'px';
     });
+    const pdfCanvas  = document.getElementById('pdfCanvas');
+    const annCanvas  = document.getElementById('annotationCanvas');
+    const textLayer  = document.getElementById('textLayer');
+    const pageStage  = document.getElementById('pageStage');
+    const ctx        = annCanvas.getContext('2d');
+    const pageLabel  = document.getElementById('pageLabel');
+
+    setupDropzone(dropzone, files => loadPDF(files[0]));
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) loadPDF(e.target.files[0]); });
+
+    document.getElementById('colorRow').addEventListener('click', e => {
+      const sw = e.target.closest('.color-swatch');
+      if (!sw) return;
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+      sw.classList.add('selected');
+      activeColor = sw.dataset.color;
+      if (activeTextBox) activeTextBox.style.color = activeColor;
+    });
+
+    const sizeSlider = document.getElementById('sizeSlider');
+    sizeSlider.addEventListener('input', () => {
+      activeSize = +sizeSlider.value;
+      document.getElementById('sizeLabel').textContent = activeSize;
+      if (activeTextBox) activeTextBox.style.fontSize = activeSize + 'px';
+    });
 
     async function loadPDF(file) {
       if (!file || (!file.name.endsWith('.pdf') && file.type !== 'application/pdf')) { showError('Please upload a PDF file.'); return; }
+    async function loadPDF(file) {
+      if (!file || (!file.name.endsWith('.pdf') && file.type !== 'application/pdf')) { showError('Please upload a PDF file.'); return; }
       clearError();
+      document.getElementById('resultBox').classList.remove('visible');
+      originalBytes = await readFileAsArrayBuffer(file);
+      // Slice a copy for pdfjs — its worker transfers (detaches) the buffer otherwise,
+      // which would break pdf-lib when we later load originalBytes to save.
+      pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(originalBytes.slice(0)) }).promise;
+      totalPages = pdfJsDoc.numPages;
       document.getElementById('resultBox').classList.remove('visible');
       originalBytes = await readFileAsArrayBuffer(file);
       // Slice a copy for pdfjs — its worker transfers (detaches) the buffer otherwise,
@@ -284,6 +355,7 @@
       strokes = {};
       textItems = {};
       dropzone.style.display = 'none';
+      document.getElementById('editorWrap').style.display = 'block';
       document.getElementById('editorWrap').style.display = 'block';
       await renderPage(currentPage);
     }
@@ -543,6 +615,10 @@
     async function savePDF() {
       const saveBtn = document.getElementById('saveBtn');
       const progressWrap = document.getElementById('progressWrap');
+    // ─── Save: bake strokes + text into the real PDF with pdf-lib ──────────
+    async function savePDF() {
+      const saveBtn = document.getElementById('saveBtn');
+      const progressWrap = document.getElementById('progressWrap');
       saveBtn.disabled = true;
       progressWrap.style.display = 'block';
       setProgress(20, 'Loading PDF...');
@@ -618,12 +694,27 @@
         document.getElementById('downloadBtn').onclick = () => downloadFile(savedBytes, 'edited.pdf');
         document.getElementById('resultBox').classList.add('visible');
         document.getElementById('resultBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        document.getElementById('resultDesc').textContent = `Your edited PDF is ready (${formatBytes(savedBytes.length)}).`;
+        document.getElementById('downloadBtn').onclick = () => downloadFile(savedBytes, 'edited.pdf');
+        document.getElementById('resultBox').classList.add('visible');
+        document.getElementById('resultBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } catch (err) {
+        showError('Error saving PDF: ' + err.message);
         showError('Error saving PDF: ' + err.message);
       } finally {
         saveBtn.disabled = false;
         progressWrap.style.display = 'none';
       }
+    }
+
+    function hexToRgb(hex) {
+      const h = hex.replace('#', '');
+      return rgb(
+        parseInt(h.slice(0,2),16)/255,
+        parseInt(h.slice(2,4),16)/255,
+        parseInt(h.slice(4,6),16)/255
+      );
+    }
     }
 
     function hexToRgb(hex) {
