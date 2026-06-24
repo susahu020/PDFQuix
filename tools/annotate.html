@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Annotate PDF — PDFQuix</title>
+  <meta name="description" content="Highlight, underline, strikethrough and add sticky notes to PDF files online for free. No signup required."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <style>
+    .annotate-layout { display: grid; grid-template-columns: 220px 1fr; gap: 20px; align-items: start; }
+    .toolbar-panel {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 18px; position: sticky; top: 80px;
+    }
+    .toolbar-panel h3 { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; }
+    .tool-btn {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border); background: var(--white);
+      font-size: 14px; font-weight: 500; cursor: pointer;
+      margin-bottom: 8px; transition: all .15s; color: var(--text-primary);
+    }
+    .tool-btn:hover { border-color: var(--red); background: #fff8f8; }
+    .tool-btn.active { border-color: var(--red); background: var(--red-light); color: var(--red); }
+    .tool-btn .icon { font-size: 18px; }
+    .color-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; margin-bottom: 14px; }
+    .color-swatch {
+      width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+      border: 2px solid transparent; transition: transform .1s;
+    }
+    .color-swatch:hover { transform: scale(1.15); }
+    .color-swatch.selected { border-color: var(--text-primary); }
+    .canvas-wrap {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden; position: relative;
+    }
+    #pdfCanvas { display: block; width: 100%; cursor: crosshair; }
+    #annotationCanvas { position: absolute; top: 0; left: 0; width: 100%; cursor: crosshair; }
+    .page-nav {
+      display: flex; align-items: center; justify-content: center;
+      gap: 16px; padding: 12px; border-top: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .page-nav button {
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 6px 14px; cursor: pointer; font-size: 13px; font-weight: 500;
+      transition: all .15s;
+    }
+    .page-nav button:hover { background: var(--red-light); border-color: var(--red); color: var(--red); }
+    .page-nav button:disabled { opacity: .4; cursor: not-allowed; }
+    .note-overlay {
+      position: absolute; background: #fef9c3; border: 1px solid #fbbf24;
+      border-radius: 6px; padding: 8px 10px; font-size: 12px;
+      min-width: 120px; max-width: 200px; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+      cursor: move; z-index: 10;
+    }
+    .note-close {
+      position: absolute; top: 2px; right: 4px; cursor: pointer;
+      font-size: 14px; color: #92400e; background: none; border: none; line-height: 1;
+    }
+    .note-text { font-size: 12px; color: #713f12; margin-top: 4px; resize: none; width: 100%; border: none; background: transparent; outline: none; font-family: inherit; }
+    .section-divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+    .size-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .size-row label { font-size: 12px; color: var(--text-secondary); min-width: 40px; }
+    .size-row input[type=range] { flex: 1; accent-color: var(--red); }
+    @media (max-width: 680px) {
+      .annotate-layout { grid-template-columns: 1fr; }
+      .toolbar-panel { position: static; }
+    }
+  </style>
+<script>
+(function(){
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
+</head>
+<body>
+
+  
+
+  <section class="tool-page-hero">
+    <div class="container">
+      <a href="../index.html" class="back-link">← All tools</a>
+      <h1>Annotate PDF</h1>
+      <p>Highlight text, draw, add sticky notes and more — all in your browser, nothing uploaded.</p>
+    </div>
+  </section>
+
+  <section class="tool-page-body">
+    <div class="container">
+
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept=".pdf"/>
+        <div class="dropzone-icon">🖊️</div>
+        <h3>Drop your PDF here</h3>
+        <p>or click to browse your files</p>
+        <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
+          Choose PDF
+        </button>
+      </div>
+
+      <div id="editorWrap" style="display:none; margin-top:24px;">
+        <div class="annotate-layout">
+
+          <!-- Toolbar -->
+          <div class="toolbar-panel">
+            <h3>Tools</h3>
+            <button class="tool-btn active" id="btn-highlight" onclick="setTool('highlight')">
+              <span class="icon">🟡</span> Highlight
+            </button>
+            <button class="tool-btn" id="btn-underline" onclick="setTool('underline')">
+              <span class="icon">U̲</span> Underline
+            </button>
+            <button class="tool-btn" id="btn-strikethrough" onclick="setTool('strikethrough')">
+              <span class="icon">S̶</span> Strikethrough
+            </button>
+            <button class="tool-btn" id="btn-draw" onclick="setTool('draw')">
+              <span class="icon">✏️</span> Draw
+            </button>
+            <button class="tool-btn" id="btn-note" onclick="setTool('note')">
+              <span class="icon">📝</span> Sticky note
+            </button>
+            <button class="tool-btn" id="btn-erase" onclick="setTool('erase')">
+              <span class="icon">🗑️</span> Erase stroke
+            </button>
+
+            <hr class="section-divider"/>
+
+            <h3>Color</h3>
+            <div class="color-row" id="colorRow">
+              <div class="color-swatch selected" style="background:#FBBF24" data-color="#FBBF24" title="Yellow"></div>
+              <div class="color-swatch" style="background:#34D399" data-color="#34D399" title="Green"></div>
+              <div class="color-swatch" style="background:#60A5FA" data-color="#60A5FA" title="Blue"></div>
+              <div class="color-swatch" style="background:#F87171" data-color="#F87171" title="Red"></div>
+              <div class="color-swatch" style="background:#C084FC" data-color="#C084FC" title="Purple"></div>
+              <div class="color-swatch" style="background:#F97316" data-color="#F97316" title="Orange"></div>
+            </div>
+
+            <div class="size-row">
+              <label>Size</label>
+              <input type="range" id="brushSize" min="2" max="24" value="6"/>
+              <span id="sizeLabel" style="font-size:12px;min-width:20px;">6</span>
+            </div>
+
+            <hr class="section-divider"/>
+
+            <button class="tool-btn" onclick="undoLast()" style="color:var(--text-secondary)">
+              <span class="icon">↩️</span> Undo
+            </button>
+            <button class="tool-btn" onclick="clearAll()" style="color:var(--text-secondary)">
+              <span class="icon">🗑️</span> Clear all
+            </button>
+
+            <hr class="section-divider"/>
+
+            <button class="btn-action" style="width:100%; justify-content:center; font-size:14px;" onclick="savePDF()">
+              ⬇ Save PDF
+            </button>
+          </div>
+
+          <!-- Canvas area -->
+          <div>
+            <div class="canvas-wrap" id="canvasWrap">
+              <canvas id="pdfCanvas"></canvas>
+              <canvas id="annotationCanvas"></canvas>
+            </div>
+            <div class="page-nav" id="pageNav">
+              <button id="prevBtn" onclick="changePage(-1)" disabled>← Prev</button>
+              <span id="pageLabel">Page 1 of 1</span>
+              <button id="nextBtn" onclick="changePage(1)" disabled>Next →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error-box" id="errorBox"></div>
+      <div class="result-box" id="resultBox">
+        <h3>✅ PDF saved with annotations!</h3>
+        <p id="resultDesc"></p>
+        <button class="btn-download" id="downloadBtn">⬇ Download annotated PDF</button>
+        <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Annotate another</button>
+      </div>
+
+      <div class="how-to">
+        <h2>How to annotate a PDF</h2>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><h4>Upload your PDF</h4><p>Drop or browse any PDF file.</p></div>
+          <div class="step"><div class="step-num">2</div><h4>Pick a tool</h4><p>Choose highlight, draw, sticky note or others from the sidebar.</p></div>
+          <div class="step"><div class="step-num">3</div><h4>Annotate</h4><p>Click and drag on the PDF to mark it up.</p></div>
+          <div class="step"><div class="step-num">4</div><h4>Save</h4><p>Download your annotated PDF with one click.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  
+  <script src="../js/utils.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const { PDFDocument, rgb } = PDFLib;
+
+    let pdfDoc = null, pdfJsDoc = null, currentPage = 1, totalPages = 1;
+    let activeTool = 'highlight', activeColor = '#FBBF24', brushSize = 6;
+    let isDrawing = false, drawPath = [];
+    let strokes = {}; // page -> array of stroke objects
+    let notes = []; // DOM note elements
+    let originalBytes = null;
+
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const pdfCanvas = document.getElementById('pdfCanvas');
+    const annCanvas = document.getElementById('annotationCanvas');
+    const ctx = annCanvas.getContext('2d');
+    const pageLabel = document.getElementById('pageLabel');
+
+    setupDropzone(dropzone, files => loadPDF(files[0]));
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) loadPDF(e.target.files[0]); });
+
+    document.getElementById('colorRow').addEventListener('click', e => {
+      const sw = e.target.closest('.color-swatch');
+      if (!sw) return;
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+      sw.classList.add('selected');
+      activeColor = sw.dataset.color;
+    });
+
+    const brushInput = document.getElementById('brushSize');
+    brushInput.addEventListener('input', () => {
+      brushSize = +brushInput.value;
+      document.getElementById('sizeLabel').textContent = brushSize;
+    });
+
+    async function loadPDF(file) {
+      if (!file || !file.name.endsWith('.pdf')) { showError('Please upload a PDF file.'); return; }
+      clearError();
+      originalBytes = await readFileAsArrayBuffer(file);
+      // IMPORTANT: pdf.js transfers the buffer backing this Uint8Array to its worker
+      // thread (for zero-copy performance), which detaches the original ArrayBuffer.
+      // We pass pdf.js a clone (.slice(0)) so `originalBytes` stays valid for the
+      // later PDFDocument.load(originalBytes) call in savePDF().
+      const typedArr = new Uint8Array(originalBytes.slice(0));
+      pdfJsDoc = await pdfjsLib.getDocument({ data: typedArr }).promise;
+      totalPages = pdfJsDoc.numPages;
+      currentPage = 1;
+      strokes = {};
+      document.getElementById('dropzone').style.display = 'none';
+      document.getElementById('editorWrap').style.display = 'block';
+      await renderPage(currentPage);
+    }
+
+    async function renderPage(num) {
+      const page = await pdfJsDoc.getPage(num);
+      const vp = page.getViewport({ scale: 1.5 });
+      pdfCanvas.width = vp.width;
+      pdfCanvas.height = vp.height;
+      annCanvas.width = vp.width;
+      annCanvas.height = vp.height;
+      annCanvas.style.height = pdfCanvas.offsetHeight + 'px';
+
+      const pCtx = pdfCanvas.getContext('2d');
+      await page.render({ canvasContext: pCtx, viewport: vp }).promise;
+
+      // Redraw saved strokes for this page
+      ctx.clearRect(0, 0, annCanvas.width, annCanvas.height);
+      (strokes[num] || []).forEach(s => drawStroke(s));
+
+      pageLabel.textContent = `Page ${num} of ${totalPages}`;
+      document.getElementById('prevBtn').disabled = num <= 1;
+      document.getElementById('nextBtn').disabled = num >= totalPages;
+    }
+
+    function setTool(t) {
+      activeTool = t;
+      document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('btn-' + t)?.classList.add('active');
+      annCanvas.style.cursor = t === 'note' ? 'cell' : t === 'erase' ? 'not-allowed' : 'crosshair';
+    }
+
+    // Mouse events on annotation canvas
+    annCanvas.addEventListener('mousedown', e => {
+      const pos = getPos(e);
+      if (activeTool === 'note') { addNote(pos.x, pos.y); return; }
+      if (activeTool === 'erase') { eraseAt(pos.x, pos.y); return; }
+      isDrawing = true;
+      drawPath = [pos];
+    });
+
+    annCanvas.addEventListener('mousemove', e => {
+      if (!isDrawing) return;
+      const pos = getPos(e);
+      drawPath.push(pos);
+      // Preview live stroke
+      ctx.clearRect(0, 0, annCanvas.width, annCanvas.height);
+      (strokes[currentPage] || []).forEach(s => drawStroke(s));
+      drawStroke({ tool: activeTool, color: activeColor, size: brushSize, path: drawPath });
+    });
+
+    annCanvas.addEventListener('mouseup', () => {
+      if (!isDrawing || drawPath.length < 2) { isDrawing = false; return; }
+      isDrawing = false;
+      if (!strokes[currentPage]) strokes[currentPage] = [];
+      strokes[currentPage].push({ tool: activeTool, color: activeColor, size: brushSize, path: [...drawPath] });
+      drawPath = [];
+    });
+
+    annCanvas.addEventListener('mouseleave', () => { isDrawing = false; });
+
+    // Touch support
+    annCanvas.addEventListener('touchstart', e => { e.preventDefault(); annCanvas.dispatchEvent(new MouseEvent('mousedown', getTouchPos(e))); });
+    annCanvas.addEventListener('touchmove', e => { e.preventDefault(); annCanvas.dispatchEvent(new MouseEvent('mousemove', getTouchPos(e))); });
+    annCanvas.addEventListener('touchend', e => { e.preventDefault(); annCanvas.dispatchEvent(new MouseEvent('mouseup')); });
+
+    function getPos(e) {
+      const r = annCanvas.getBoundingClientRect();
+      const scaleX = annCanvas.width / r.width;
+      const scaleY = annCanvas.height / r.height;
+      return { x: (e.clientX - r.left) * scaleX, y: (e.clientY - r.top) * scaleY };
+    }
+    function getTouchPos(e) {
+      const t = e.touches[0];
+      return { clientX: t.clientX, clientY: t.clientY };
+    }
+
+    function drawStroke(s) {
+      if (!s.path || s.path.length < 2) return;
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      if (s.tool === 'highlight') {
+        ctx.globalAlpha = 0.35;
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = s.size * 3;
+      } else if (s.tool === 'underline') {
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = Math.max(2, s.size * 0.5);
+        // Offset down
+        const offset = s.size * 1.5;
+        ctx.beginPath();
+        s.path.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y + offset) : ctx.lineTo(p.x, p.y + offset));
+        ctx.stroke();
+        ctx.restore();
+        return;
+      } else if (s.tool === 'strikethrough') {
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = Math.max(2, s.size * 0.5);
+      } else {
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = s.size;
+      }
+      ctx.beginPath();
+      s.path.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function eraseAt(x, y) {
+      if (!strokes[currentPage]) return;
+      const r = 20;
+      strokes[currentPage] = strokes[currentPage].filter(s =>
+        !s.path.some(p => Math.hypot(p.x - x, p.y - y) < r)
+      );
+      ctx.clearRect(0, 0, annCanvas.width, annCanvas.height);
+      (strokes[currentPage] || []).forEach(s => drawStroke(s));
+    }
+
+    function undoLast() {
+      if (strokes[currentPage] && strokes[currentPage].length) {
+        strokes[currentPage].pop();
+        ctx.clearRect(0, 0, annCanvas.width, annCanvas.height);
+        (strokes[currentPage] || []).forEach(s => drawStroke(s));
+      }
+    }
+
+    function clearAll() {
+      strokes[currentPage] = [];
+      ctx.clearRect(0, 0, annCanvas.width, annCanvas.height);
+    }
+
+    function addNote(x, y) {
+      const wrap = document.getElementById('canvasWrap');
+      const rect = annCanvas.getBoundingClientRect();
+      const wRect = wrap.getBoundingClientRect();
+      const note = document.createElement('div');
+      note.className = 'note-overlay';
+      note.style.left = (x / annCanvas.width * rect.width + (rect.left - wRect.left)) + 'px';
+      note.style.top  = (y / annCanvas.height * rect.height + (rect.top - wRect.top)) + 'px';
+      note.innerHTML = `<button class="note-close" onclick="this.parentElement.remove()">✕</button><textarea class="note-text" placeholder="Type note..." rows="3"></textarea>`;
+      makeDraggable(note);
+      wrap.appendChild(note);
+      note.querySelector('textarea').focus();
+    }
+
+    function makeDraggable(el) {
+      let ox, oy;
+      el.addEventListener('mousedown', e => {
+        if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON') return;
+        ox = e.clientX - el.offsetLeft; oy = e.clientY - el.offsetTop;
+        const move = ev => { el.style.left = (ev.clientX - ox) + 'px'; el.style.top = (ev.clientY - oy) + 'px'; };
+        const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+        document.addEventListener('mousemove', move);
+        document.addEventListener('mouseup', up);
+      });
+    }
+
+    async function changePage(dir) {
+      const next = currentPage + dir;
+      if (next < 1 || next > totalPages) return;
+      currentPage = next;
+      await renderPage(currentPage);
+    }
+
+    async function savePDF() {
+      try {
+        const pdfLibDoc = await PDFDocument.load(originalBytes);
+        const pages = pdfLibDoc.getPages();
+
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+          const pageStrokes = strokes[pageNum] || [];
+          if (!pageStrokes.length) continue;
+
+          const pdfPage = pages[pageNum - 1];
+          const { width, height } = pdfPage.getSize();
+          const pdfJsPage = await pdfJsDoc.getPage(pageNum);
+          const vp = pdfJsPage.getViewport({ scale: 1.5 });
+          const scaleX = width / vp.width;
+          const scaleY = height / vp.height;
+
+          for (const s of pageStrokes) {
+            if (!s.path || s.path.length < 2) continue;
+            const hex = s.color.replace('#', '');
+            const r = parseInt(hex.slice(0,2),16)/255;
+            const g = parseInt(hex.slice(2,4),16)/255;
+            const b = parseInt(hex.slice(4,6),16)/255;
+            const color = rgb(r, g, b);
+
+            const pts = s.path.map(p => ({ x: p.x * scaleX, y: height - p.y * scaleY }));
+
+            if (s.tool === 'highlight') {
+              pdfPage.drawRectangle({
+                x: pts[0].x, y: pts[0].y - s.size,
+                width: pts[pts.length-1].x - pts[0].x,
+                height: s.size * 2,
+                color, opacity: 0.35,
+              });
+            } else if (s.tool === 'underline' || s.tool === 'strikethrough') {
+              for (let i = 1; i < pts.length; i++) {
+                pdfPage.drawLine({ start: pts[i-1], end: pts[i], thickness: Math.max(1, s.size * 0.4), color, opacity: 1 });
+              }
+            } else {
+              for (let i = 1; i < pts.length; i++) {
+                pdfPage.drawLine({ start: pts[i-1], end: pts[i], thickness: s.size * scaleX, color, opacity: 1 });
+              }
+            }
+          }
+        }
+
+        const savedBytes = await pdfLibDoc.save();
+        document.getElementById('resultDesc').textContent = `Annotations saved to ${formatBytes(savedBytes.length)}.`;
+        document.getElementById('downloadBtn').onclick = () => downloadFile(savedBytes, 'annotated.pdf');
+        document.getElementById('resultBox').classList.add('visible');
+        document.getElementById('resultBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch (err) {
+        showError('Error saving PDF: ' + err.message);
+      }
+    }
+
+    function resetTool() {
+      pdfDoc = null; pdfJsDoc = null; strokes = {}; notes = [];
+      currentPage = 1; totalPages = 1;
+      document.getElementById('dropzone').style.display = 'block';
+      document.getElementById('editorWrap').style.display = 'none';
+      document.getElementById('resultBox').classList.remove('visible');
+      clearError();
+    }
+  </script>
+
+<script src="../js/header.js"></script>
+<script src="../js/footer.js"></script>
+</body>
+</html>

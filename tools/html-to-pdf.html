@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HTML to PDF — PDFQuix</title>
+  <meta name="description" content="Convert HTML code or a webpage URL to PDF online for free. Paste HTML or enter a URL. No signup required."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    .mode-tabs {
+      display: flex; border-bottom: 2px solid var(--border); margin-bottom: 20px;
+    }
+    .mode-tab {
+      padding: 10px 22px; font-size: 14px; font-weight: 500; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .15s;
+      color: var(--text-secondary); background: none; border-top: none; border-left: none; border-right: none;
+      font-family: inherit;
+    }
+    .mode-tab:hover { color: var(--text-primary); }
+    .mode-tab.active { color: var(--red); border-bottom-color: var(--red); }
+    .html-editor {
+      width: 100%; min-height: 280px; padding: 16px; font-family: 'Courier New', monospace;
+      font-size: 13px; line-height: 1.6; border: 1px solid var(--border);
+      border-radius: var(--radius-lg); resize: vertical; outline: none;
+      background: var(--white); color: var(--text-primary); box-sizing: border-box;
+      transition: border-color .15s;
+    }
+    .html-editor:focus { border-color: var(--red); }
+    .url-input-wrap {
+      display: flex; gap: 10px; align-items: center;
+    }
+    .url-input {
+      flex: 1; padding: 12px 16px; border: 1px solid var(--border);
+      border-radius: var(--radius-lg); font-size: 14px; outline: none;
+      font-family: inherit; background: var(--white); color: var(--text-primary);
+    }
+    .url-input:focus { border-color: var(--red); }
+    .preview-frame-wrap {
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      overflow: hidden; margin-top: 20px; background: white;
+    }
+    .preview-frame-header {
+      background: var(--bg); padding: 10px 16px; font-size: 13px;
+      font-weight: 500; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      color: var(--text-secondary);
+    }
+    #previewFrame {
+      width: 100%; height: 360px; border: none; display: block;
+      background: white;
+    }
+    .template-row {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; margin-bottom: 4px;
+    }
+    .tpl-btn {
+      padding: 5px 12px; font-size: 12px; font-weight: 500; border-radius: 99px;
+      border: 1px solid var(--border); background: var(--white); cursor: pointer;
+      transition: all .15s; color: var(--text-secondary); font-family: inherit;
+    }
+    .tpl-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-light); }
+    .char-count { font-size: 12px; color: var(--text-muted); text-align: right; margin-top: 6px; }
+    [data-theme="dark"] .html-editor { background: #1a1d27; border-color: var(--dm-border); color: var(--dm-text-primary); }
+    [data-theme="dark"] .url-input { background: var(--dm-surface); border-color: var(--dm-border); color: var(--dm-text-primary); }
+    [data-theme="dark"] .preview-frame-wrap { border-color: var(--dm-border); }
+    [data-theme="dark"] .preview-frame-header { background: var(--dm-surface2); border-color: var(--dm-border); color: var(--dm-text-secondary); }
+    [data-theme="dark"] .mode-tabs { border-color: var(--dm-border); }
+    [data-theme="dark"] .mode-tab { color: var(--dm-text-secondary); }
+    [data-theme="dark"] .mode-tab:hover { color: var(--dm-text-primary); }
+    [data-theme="dark"] .tpl-btn { background: var(--dm-surface); border-color: var(--dm-border); color: var(--dm-text-secondary); }
+  </style>
+<script>
+(function(){
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
+</head>
+<body>
+
+
+<section class="tool-page-hero">
+  <div class="container">
+    <a href="../index.html" class="back-link">← All tools</a>
+    <h1>HTML to PDF</h1>
+    <p>Paste HTML code or type content directly and convert it to a clean PDF. Uses your browser's built-in print engine.</p>
+  </div>
+</section>
+
+<section class="tool-page-body">
+  <div class="container">
+
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tab-html" onclick="switchMode('html')">📝 Paste HTML</button>
+      <button class="mode-tab" id="tab-text" onclick="switchMode('text')">✏️ Plain text / Markdown</button>
+    </div>
+
+    <!-- HTML mode -->
+    <div id="mode-html">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">Paste any HTML. Supports inline CSS. External images may not load due to browser security.</p>
+      <div class="template-row">
+        <span style="font-size:12px;color:var(--text-muted);align-self:center;">Templates:</span>
+        <button class="tpl-btn" onclick="loadTemplate('invoice')">📄 Invoice</button>
+        <button class="tpl-btn" onclick="loadTemplate('letter')">✉️ Letter</button>
+        <button class="tpl-btn" onclick="loadTemplate('report')">📊 Report</button>
+        <button class="tpl-btn" onclick="loadTemplate('cv')">👤 CV / Resume</button>
+        <button class="tpl-btn" onclick="loadTemplate('table')">📋 Data table</button>
+      </div>
+      <textarea class="html-editor" id="htmlInput" placeholder="Paste your HTML here…" oninput="updatePreview(); updateCharCount()"></textarea>
+      <div class="char-count" id="charCount">0 characters</div>
+    </div>
+
+    <!-- Plain text mode -->
+    <div id="mode-text" style="display:none;">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">Type or paste plain text. Basic Markdown (# headings, **bold**, *italic*, lists) is supported.</p>
+      <textarea class="html-editor" id="textInput" placeholder="# My Document&#10;&#10;Write your content here…&#10;&#10;**Bold text**, *italic text*, and ## subheadings are supported." oninput="updatePreviewFromText(); updateCharCount()" style="font-family:'Inter',sans-serif;"></textarea>
+      <div class="char-count" id="charCount2">0 characters</div>
+    </div>
+
+    <!-- PDF options -->
+    <div class="options-panel" style="margin-top:20px;">
+      <h3>PDF settings</h3>
+      <div class="option-row">
+        <span class="option-label">Page size</span>
+        <select class="option-select" id="pageSize">
+          <option value="a4">A4 (210 × 297 mm)</option>
+          <option value="letter">US Letter (216 × 279 mm)</option>
+          <option value="a3">A3 (297 × 420 mm)</option>
+        </select>
+      </div>
+      <div class="option-row">
+        <span class="option-label">Orientation</span>
+        <select class="option-select" id="pageOrient">
+          <option value="portrait">Portrait</option>
+          <option value="landscape">Landscape</option>
+        </select>
+      </div>
+      <div class="option-row">
+        <span class="option-label">Margins</span>
+        <select class="option-select" id="margins">
+          <option value="normal">Normal (20mm)</option>
+          <option value="narrow">Narrow (10mm)</option>
+          <option value="wide">Wide (30mm)</option>
+          <option value="none">None</option>
+        </select>
+      </div>
+      <div class="option-row">
+        <span class="option-label">File name</span>
+        <input type="text" id="outName" value="document.pdf" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;outline:none;width:200px;"/>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div class="preview-frame-wrap" id="previewWrap" style="display:none; margin-top:20px;">
+      <div class="preview-frame-header">
+        <span>Live preview</span>
+        <span style="font-size:11px;">This is how it will look in the PDF</span>
+      </div>
+      <iframe id="previewFrame" title="HTML Preview"></iframe>
+    </div>
+
+    <div class="action-bar" style="margin-top:20px;">
+      <button class="btn-action" onclick="convertToPDF()">📄 Convert to PDF</button>
+      <button class="btn-upload" style="margin-left:12px;margin-top:0;background:var(--bg);color:var(--text-secondary);border:1px solid var(--border);" onclick="updatePreview()">👁 Preview</button>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="result-box" id="resultBox">
+      <h3>✅ PDF created!</h3>
+      <p id="resultDesc"></p>
+      <button class="btn-download" id="downloadBtn">⬇ Download PDF</button>
+      <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetResult()">Convert another</button>
+    </div>
+
+    <div class="how-to">
+      <h2>How to convert HTML to PDF</h2>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><h4>Paste HTML or text</h4><p>Drop in any HTML with inline CSS, or just write plain text.</p></div>
+        <div class="step"><div class="step-num">2</div><h4>Use a template</h4><p>Start from an invoice, letter, or report template to save time.</p></div>
+        <div class="step"><div class="step-num">3</div><h4>Preview</h4><p>See a live preview of your PDF before downloading.</p></div>
+        <div class="step"><div class="step-num">4</div><h4>Download</h4><p>Get your PDF in seconds — no server, no uploads.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<script src="../js/utils.js"></script>
+<script>
+  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  let currentMode = 'html';
+
+  function switchMode(mode) {
+    currentMode = mode;
+    document.getElementById('mode-html').style.display = mode==='html'?'block':'none';
+    document.getElementById('mode-text').style.display = mode==='text'?'block':'none';
+    document.getElementById('tab-html').classList.toggle('active', mode==='html');
+    document.getElementById('tab-text').classList.toggle('active', mode==='text');
+    document.getElementById('previewWrap').style.display = 'none';
+  }
+
+  function updateCharCount() {
+    const v = document.getElementById(currentMode==='html'?'htmlInput':'textInput').value;
+    const el = document.getElementById(currentMode==='html'?'charCount':'charCount2');
+    el.textContent = `${v.length.toLocaleString()} characters`;
+  }
+
+  function getHTML() {
+    if (currentMode === 'html') return document.getElementById('htmlInput').value.trim();
+    return markdownToHTML(document.getElementById('textInput').value);
+  }
+
+  function markdownToHTML(md) {
+    let html = escH2(md)
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>');
+    return `<p>${html}</p>`;
+  }
+
+  function escH2(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  const marginMap = { normal: '20mm', narrow: '10mm', wide: '30mm', none: '0' };
+
+  function buildFullHTML(body, pageWidthPx) {
+    const margin = marginMap[document.getElementById('margins').value] || '20mm';
+    if (body.includes('<html') || body.includes('<!DOCTYPE')) return body;
+    const widthRule = pageWidthPx ? `width:${pageWidthPx}px;` : 'width:100%;';
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; background: #fff; }
+      #pdfqx-page {
+        ${widthRule} padding: ${margin};
+        font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #1a1a1a;
+        background: #fff;
+      }
+      h1,h2,h3 { color: #111; margin-top: 1.4em; } table { border-collapse: collapse; width: 100%; }
+      th,td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; }
+      th { background: #f5f5f5; font-weight: 600; }
+    </style></head><body><div id="pdfqx-page">${body}</div></body></html>`;
+  }
+
+  function updatePreview() {
+    const html = getHTML();
+    if (!html) { document.getElementById('previewWrap').style.display='none'; return; }
+    const full = buildFullHTML(html);
+    const iframe = document.getElementById('previewFrame');
+    iframe.srcdoc = full;
+    document.getElementById('previewWrap').style.display = 'block';
+  }
+
+  function updatePreviewFromText() {
+    updatePreview();
+  }
+
+  const PAGE_SIZES_MM = { letter: [215.9, 279.4], a3: [297, 420], a4: [210, 297] };
+  const PX_PER_MM = 96 / 25.4;        // CSS pixels at 96 DPI
+  const RENDER_SCALE = 2;             // extra multiplier for a sharper raster
+  const PT_PER_MM = 2.8346456693;
+
+  async function convertToPDF() {
+    clearError();
+    const html = getHTML();
+    if (!html) { showError('Please enter some HTML or text first.'); return; }
+
+    const size = document.getElementById('pageSize').value;
+    const orient = document.getElementById('pageOrient').value;
+    let [wMM, hMM] = PAGE_SIZES_MM[size] || PAGE_SIZES_MM.a4;
+    if (orient === 'landscape') { [wMM, hMM] = [hMM, wMM]; }
+
+    const pageWidthPx  = Math.round(wMM * PX_PER_MM);
+    const pageHeightPx = Math.round(hMM * PX_PER_MM);
+    const pageWidthPt  = wMM * PT_PER_MM;
+    const pageHeightPt = hMM * PT_PER_MM;
+
+    let rawName = (document.getElementById('outName').value || 'document.pdf').trim();
+    if (!rawName) rawName = 'document.pdf';
+    if (!/\.pdf$/i.test(rawName)) rawName += '.pdf';
+
+    const convertBtn = document.querySelector('button[onclick="convertToPDF()"]');
+    if (convertBtn) convertBtn.disabled = true;
+
+    const full = buildFullHTML(html, pageWidthPx);
+
+    const frame = document.createElement('iframe');
+    frame.style.cssText = `position:fixed; left:-99999px; top:0; width:${pageWidthPx}px; height:0; border:0;`;
+    document.body.appendChild(frame);
+
+    try {
+      await new Promise((resolve, reject) => {
+        frame.onload = resolve;
+        frame.onerror = () => reject(new Error('Could not render the content.'));
+        frame.srcdoc = full;
+      });
+      // let images/web fonts settle
+      await new Promise(r => setTimeout(r, 200));
+
+      const target = frame.contentDocument.getElementById('pdfqx-page');
+      if (!target) throw new Error('Could not find content to render.');
+
+      const canvas = await html2canvas(target, {
+        scale: RENDER_SCALE,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        windowWidth: pageWidthPx,
+      });
+
+      const sliceHeightPx = pageHeightPx * RENDER_SCALE;
+      const totalHeightPx = canvas.height;
+      const numPages = Math.max(1, Math.ceil(totalHeightPx / sliceHeightPx));
+
+      const pdfDoc = await PDFDocument.create();
+
+      for (let i = 0; i < numPages; i++) {
+        const sliceTop = i * sliceHeightPx;
+        const thisSliceHeight = Math.min(sliceHeightPx, totalHeightPx - sliceTop);
+
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = thisSliceHeight;
+        const ctx = sliceCanvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        ctx.drawImage(canvas, 0, sliceTop, canvas.width, thisSliceHeight, 0, 0, canvas.width, thisSliceHeight);
+
+        const blob = await new Promise(res => sliceCanvas.toBlob(res, 'image/jpeg', 0.92));
+        const imgBytes = new Uint8Array(await blob.arrayBuffer());
+        const jpgImage = await pdfDoc.embedJpg(imgBytes);
+
+        const page = pdfDoc.addPage([pageWidthPt, pageHeightPt]);
+        const drawHeightPt = (thisSliceHeight / sliceHeightPx) * pageHeightPt;
+        page.drawImage(jpgImage, { x: 0, y: pageHeightPt - drawHeightPt, width: pageWidthPt, height: drawHeightPt });
+      }
+
+      const pdfBytes = await pdfDoc.save();
+
+      document.getElementById('resultDesc').textContent =
+        `Generated a ${numPages}-page PDF (${formatBytes(pdfBytes.length)}). Note: the page is rendered as an image, so text in the downloaded PDF won't be selectable or searchable.`;
+      document.getElementById('downloadBtn').style.display = '';
+      document.getElementById('downloadBtn').onclick = () => downloadFile(pdfBytes, rawName);
+      document.getElementById('resultBox').classList.add('visible');
+      document.getElementById('resultBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (e) {
+      showError('Failed to generate PDF: ' + e.message);
+    } finally {
+      if (convertBtn) convertBtn.disabled = false;
+      try { document.body.removeChild(frame); } catch(_) {}
+    }
+  }
+
+  function resetResult() {
+    document.getElementById('resultBox').classList.remove('visible');
+    document.getElementById('downloadBtn').style.display = '';
+    clearError();
+  }
+
+  const templates = {
+    invoice: `<div style="max-width:700px;margin:0 auto;font-family:Arial,sans-serif;">
+  <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:32px;">
+    <div><h1 style="color:#E63946;margin:0;">INVOICE</h1><p style="color:#888;margin:4px 0;">#INV-2024-001</p></div>
+    <div style="text-align:right;"><strong>Your Company Name</strong><br>123 Business St<br>Mumbai, MH 400001<br>hello@company.com</div>
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:32px;">
+    <div><strong>Bill to:</strong><br>Client Name<br>Client Address<br>client@email.com</div>
+    <div style="text-align:right;"><strong>Date:</strong> ${new Date().toLocaleDateString('en-IN')}<br><strong>Due:</strong> ${new Date(Date.now()+30*864e5).toLocaleDateString('en-IN')}</div>
+  </div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+    <tr style="background:#f8f8f8;"><th style="padding:10px 14px;border:1px solid #ddd;text-align:left;">Description</th><th style="padding:10px 14px;border:1px solid #ddd;text-align:right;">Qty</th><th style="padding:10px 14px;border:1px solid #ddd;text-align:right;">Rate</th><th style="padding:10px 14px;border:1px solid #ddd;text-align:right;">Amount</th></tr>
+    <tr><td style="padding:10px 14px;border:1px solid #ddd;">Service description</td><td style="padding:10px 14px;border:1px solid #ddd;text-align:right;">1</td><td style="padding:10px 14px;border:1px solid #ddd;text-align:right;">₹50,000</td><td style="padding:10px 14px;border:1px solid #ddd;text-align:right;">₹50,000</td></tr>
+    <tr><td style="padding:10px 14px;border:1px solid #ddd;">Another item</td><td style="padding:10px 14px;border:1px solid #ddd;text-align:right;">2</td><td style="padding:10px 14px;border:1px solid #ddd;text-align:right;">₹10,000</td><td style="padding:10px 14px;border:1px solid #ddd;text-align:right;">₹20,000</td></tr>
+  </table>
+  <div style="text-align:right;"><p>Subtotal: <strong>₹70,000</strong></p><p>GST (18%): <strong>₹12,600</strong></p><p style="font-size:18px;color:#E63946;">Total: <strong>₹82,600</strong></p></div>
+  <p style="color:#888;font-size:12px;border-top:1px solid #eee;padding-top:16px;margin-top:24px;">Payment due within 30 days. Bank: HDFC · Account: 1234567890 · IFSC: HDFC0001234</p>
+</div>`,
+
+    letter: `<div style="max-width:680px;margin:0 auto;font-family:'Georgia',serif;">
+  <p style="text-align:right;">Your Name<br>123 Main Street<br>City, State 110001<br>${new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</p>
+  <p>The Manager<br>Company Name<br>Address</p>
+  <p><strong>Subject: [State your subject here]</strong></p>
+  <p>Dear Sir/Madam,</p>
+  <p>I am writing to bring to your attention [state the purpose of your letter clearly in the first paragraph].</p>
+  <p>[Provide supporting details, context, or background information in this paragraph. Be specific and concise.]</p>
+  <p>[State your request, proposal, or next steps clearly.]</p>
+  <p>I would be grateful if you could [requested action] at your earliest convenience. Please feel free to contact me at [phone/email] should you require any further information.</p>
+  <p>Yours sincerely,</p>
+  <p style="margin-top:40px;"><strong>Your Name</strong><br>[Designation]<br>[Contact]</p>
+</div>`,
+
+    report: `<div style="max-width:720px;margin:0 auto;font-family:Arial,sans-serif;">
+  <div style="background:#E63946;color:white;padding:32px;margin:-20px -20px 32px;border-radius:4px;">
+    <h1 style="margin:0;font-size:26px;">Quarterly Report</h1>
+    <p style="margin:6px 0 0;opacity:.85;">Q1 2024 · Prepared by: [Your Name] · ${new Date().toLocaleDateString('en-IN')}</p>
+  </div>
+  <h2>Executive Summary</h2>
+  <p>This report provides an overview of [company/project] performance for Q1 2024. Key highlights include [summary of results].</p>
+  <h2>Key Metrics</h2>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+    <tr style="background:#f5f5f5;"><th style="padding:10px;border:1px solid #ddd;text-align:left;">Metric</th><th style="padding:10px;border:1px solid #ddd;text-align:right;">Q1 2024</th><th style="padding:10px;border:1px solid #ddd;text-align:right;">Q4 2023</th><th style="padding:10px;border:1px solid #ddd;text-align:right;">Change</th></tr>
+    <tr><td style="padding:10px;border:1px solid #ddd;">Revenue</td><td style="padding:10px;border:1px solid #ddd;text-align:right;">₹12.4L</td><td style="padding:10px;border:1px solid #ddd;text-align:right;">₹10.8L</td><td style="padding:10px;border:1px solid #ddd;text-align:right;color:green;">+14.8%</td></tr>
+    <tr><td style="padding:10px;border:1px solid #ddd;">Customers</td><td style="padding:10px;border:1px solid #ddd;text-align:right;">248</td><td style="padding:10px;border:1px solid #ddd;text-align:right;">201</td><td style="padding:10px;border:1px solid #ddd;text-align:right;color:green;">+23.4%</td></tr>
+  </table>
+  <h2>Recommendations</h2>
+  <ul><li>Continue investing in [strategy]</li><li>Address [challenge] by [solution]</li><li>Target [goal] for Q2</li></ul>
+</div>`,
+
+    cv: `<div style="max-width:700px;margin:0 auto;font-family:Arial,sans-serif;color:#1a1a1a;">
+  <div style="display:flex;justify-content:space-between;align-items:start;border-bottom:3px solid #E63946;padding-bottom:16px;margin-bottom:20px;">
+    <div><h1 style="margin:0;font-size:28px;">Your Full Name</h1><p style="margin:4px 0;color:#E63946;font-weight:500;">Software Engineer · Product Designer</p></div>
+    <div style="text-align:right;font-size:13px;color:#555;">email@example.com<br>+91 98765 43210<br>linkedin.com/in/yourname<br>Mumbai, India</div>
+  </div>
+  <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#E63946;margin-bottom:8px;">Experience</h2>
+  <p><strong>Senior Developer</strong> · Company Name <span style="color:#888;">· 2022–Present</span></p>
+  <ul style="margin-top:4px;"><li>Led development of [feature] resulting in [outcome]</li><li>Managed team of 4 engineers across 3 projects</li></ul>
+  <p><strong>Junior Developer</strong> · Previous Company <span style="color:#888;">· 2019–2022</span></p>
+  <ul style="margin-top:4px;"><li>Built [product/feature] using [technology]</li></ul>
+  <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#E63946;margin-bottom:8px;margin-top:20px;">Education</h2>
+  <p><strong>B.Tech Computer Science</strong> · IIT / NIT / Your University · 2019 · GPA: 8.5/10</p>
+  <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:#E63946;margin-bottom:8px;margin-top:20px;">Skills</h2>
+  <p>React · Node.js · Python · PostgreSQL · AWS · Figma · Git</p>
+</div>`,
+
+    table: `<div style="max-width:720px;margin:0 auto;font-family:Arial,sans-serif;">
+  <h2 style="margin-bottom:4px;">Data Report</h2>
+  <p style="color:#888;font-size:13px;margin-bottom:20px;">Generated on ${new Date().toLocaleDateString('en-IN')}</p>
+  <table style="width:100%;border-collapse:collapse;">
+    <thead><tr style="background:#E63946;color:white;">
+      <th style="padding:12px 14px;text-align:left;">ID</th>
+      <th style="padding:12px 14px;text-align:left;">Name</th>
+      <th style="padding:12px 14px;text-align:right;">Value</th>
+      <th style="padding:12px 14px;text-align:left;">Status</th>
+      <th style="padding:12px 14px;text-align:left;">Date</th>
+    </tr></thead>
+    <tbody>
+      <tr style="background:#fff;"><td style="padding:10px 14px;border-bottom:1px solid #eee;">001</td><td style="padding:10px 14px;border-bottom:1px solid #eee;">Item Alpha</td><td style="padding:10px 14px;border-bottom:1px solid #eee;text-align:right;">₹12,400</td><td style="padding:10px 14px;border-bottom:1px solid #eee;"><span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:99px;font-size:12px;">Active</span></td><td style="padding:10px 14px;border-bottom:1px solid #eee;">01/01/2024</td></tr>
+      <tr style="background:#f9f9f9;"><td style="padding:10px 14px;border-bottom:1px solid #eee;">002</td><td style="padding:10px 14px;border-bottom:1px solid #eee;">Item Beta</td><td style="padding:10px 14px;border-bottom:1px solid #eee;text-align:right;">₹8,750</td><td style="padding:10px 14px;border-bottom:1px solid #eee;"><span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:99px;font-size:12px;">Pending</span></td><td style="padding:10px 14px;border-bottom:1px solid #eee;">15/01/2024</td></tr>
+      <tr style="background:#fff;"><td style="padding:10px 14px;border-bottom:1px solid #eee;">003</td><td style="padding:10px 14px;border-bottom:1px solid #eee;">Item Gamma</td><td style="padding:10px 14px;border-bottom:1px solid #eee;text-align:right;">₹21,000</td><td style="padding:10px 14px;border-bottom:1px solid #eee;"><span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:99px;font-size:12px;">Active</span></td><td style="padding:10px 14px;border-bottom:1px solid #eee;">22/01/2024</td></tr>
+    </tbody>
+    <tfoot><tr style="background:#f3f4f6;font-weight:600;"><td colspan="2" style="padding:10px 14px;">Total</td><td style="padding:10px 14px;text-align:right;">₹42,150</td><td colspan="2" style="padding:10px 14px;"></td></tr></tfoot>
+  </table>
+</div>`,
+  };
+
+  function loadTemplate(name) {
+    if (currentMode !== 'html') switchMode('html');
+    document.getElementById('htmlInput').value = templates[name] || '';
+    updatePreview();
+    updateCharCount();
+  }
+
+  // Auto preview on load
+  document.addEventListener('DOMContentLoaded', () => {
+    loadTemplate('invoice');
+  });
+</script>
+
+</body>
+</html>

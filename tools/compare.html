@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Compare PDFs — PDFQuix</title>
+  <meta name="description" content="Compare two PDF files and highlight differences online for free. No signup required."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    .compare-upload-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;
+    }
+    .mini-drop {
+      border: 2px dashed var(--border); border-radius: var(--radius-lg);
+      padding: 28px 20px; text-align: center; cursor: pointer;
+      transition: all .15s; background: var(--white); position: relative;
+    }
+    .mini-drop:hover, .mini-drop.dragover { border-color: var(--red); background: var(--red-light); }
+    .mini-drop.loaded { border-color: #22c55e; background: #f0fdf4; border-style: solid; }
+    .mini-drop input { position:absolute;inset:0;opacity:0;cursor:pointer; }
+    .mini-drop .drop-icon { font-size: 28px; margin-bottom: 8px; }
+    .mini-drop h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text-primary); }
+    .mini-drop p  { font-size: 12px; color: var(--text-secondary); }
+    .mini-drop .file-name { font-size: 12px; color: #15803d; font-weight: 500; margin-top: 6px; word-break: break-all; }
+    .compare-view {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      overflow: hidden; margin-top: 24px;
+    }
+    .compare-pane { position: relative; }
+    .compare-pane + .compare-pane { border-left: 2px solid var(--red); }
+    .pane-label {
+      padding: 10px 16px; font-size: 13px; font-weight: 600;
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .pane-label .badge {
+      font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 99px;
+    }
+    .badge-a { background: #dbeafe; color: #1d4ed8; }
+    .badge-b { background: #fce7f3; color: #9d174d; }
+    .pane-canvas-wrap { position: relative; overflow: hidden; }
+    .pane-canvas-wrap canvas { display: block; width: 100%; }
+    .diff-overlay { position: absolute; top: 0; left: 0; width: 100%; pointer-events: none; }
+    .diff-stats {
+      display: flex; gap: 20px; flex-wrap: wrap; padding: 14px 20px;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-md); margin-top: 16px;
+      font-size: 13px;
+    }
+    .diff-stat { display: flex; flex-direction: column; gap: 2px; }
+    .diff-stat .val { font-size: 22px; font-weight: 600; color: var(--text-primary); }
+    .diff-stat .lbl { color: var(--text-muted); font-size: 11px; }
+    .diff-stat.added .val { color: #16a34a; }
+    .diff-stat.removed .val { color: #dc2626; }
+    .diff-stat.changed .val { color: #d97706; }
+    .compare-page-nav {
+      display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+      border-top: 1px solid var(--border); font-size: 13px; justify-content: center;
+    }
+    .compare-page-nav button {
+      padding: 5px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--bg); cursor: pointer; font-size: 13px;
+      transition: all .15s;
+    }
+    .compare-page-nav button:hover { border-color: var(--red); color: var(--red); }
+    .compare-page-nav button:disabled { opacity:.4; cursor:not-allowed; }
+    .legend { display: flex; gap: 16px; font-size: 12px; align-items: center; margin-top: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+    .diff-text-panel {
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      background: var(--white); margin-top: 20px; max-height: 320px; overflow-y: auto;
+    }
+    .diff-line {
+      display: flex; gap: 0; font-size: 12px; font-family: 'JetBrains Mono', monospace;
+      line-height: 1.6; border-bottom: 1px solid var(--border);
+    }
+    .diff-line:last-child { border-bottom: none; }
+    .diff-line .ln { min-width: 40px; padding: 4px 8px; color: var(--text-muted); background: var(--bg); text-align: right; border-right: 1px solid var(--border); user-select: none; }
+    .diff-line .content { padding: 4px 12px; flex: 1; white-space: pre-wrap; word-break: break-word; }
+    .diff-line.added   .content { background: #f0fdf4; color: #15803d; }
+    .diff-line.removed .content { background: #fef2f2; color: #dc2626; }
+    .diff-line.same    .content { color: var(--text-secondary); }
+    .diff-panel-header { padding: 10px 16px; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--border); background: var(--bg); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+    @media (max-width: 640px) {
+      .compare-upload-grid { grid-template-columns: 1fr; }
+      .compare-view { grid-template-columns: 1fr; }
+      .compare-pane + .compare-pane { border-left: none; border-top: 2px solid var(--red); }
+    }
+    [data-theme="dark"] .mini-drop { background: var(--dm-surface); border-color: var(--dm-border); }
+    [data-theme="dark"] .mini-drop h4 { color: var(--dm-text-primary); }
+    [data-theme="dark"] .mini-drop p  { color: var(--dm-text-secondary); }
+    [data-theme="dark"] .mini-drop.loaded { background: rgba(22,163,74,.1); border-color: #22c55e; }
+    [data-theme="dark"] .pane-label { background: var(--dm-surface2); border-color: var(--dm-border); color: var(--dm-text-primary); }
+    [data-theme="dark"] .compare-view { border-color: var(--dm-border); }
+    [data-theme="dark"] .diff-stats { background: var(--dm-surface); border-color: var(--dm-border); }
+    [data-theme="dark"] .diff-stat .val { color: var(--dm-text-primary); }
+    [data-theme="dark"] .diff-text-panel { background: var(--dm-surface); border-color: var(--dm-border); }
+    [data-theme="dark"] .diff-panel-header { background: var(--dm-surface2); border-color: var(--dm-border); color: var(--dm-text-primary); }
+    [data-theme="dark"] .diff-line .ln { background: var(--dm-surface2); border-color: var(--dm-border); }
+    [data-theme="dark"] .diff-line.same .content { color: var(--dm-text-secondary); }
+    [data-theme="dark"] .compare-page-nav { border-color: var(--dm-border); }
+    [data-theme="dark"] .compare-page-nav button { background: var(--dm-surface2); border-color: var(--dm-border); color: var(--dm-text-secondary); }
+  </style>
+<script>
+(function(){
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
+</head>
+<body>
+
+
+<section class="tool-page-hero">
+  <div class="container">
+    <a href="../index.html" class="back-link">← All tools</a>
+    <h1>Compare PDFs</h1>
+    <p>Upload two versions of a PDF and instantly see what changed — highlighted side by side. Adobe charges for this. We don't.</p>
+  </div>
+</section>
+
+<section class="tool-page-body">
+  <div class="container">
+
+    <div class="compare-upload-grid">
+      <div class="mini-drop" id="dropA" ondragover="ev(event,'A')" ondragleave="el('A')" ondrop="ed(event,'A')">
+        <input type="file" accept=".pdf" onchange="loadDrop(event,'A')"/>
+        <div class="drop-icon">📄</div>
+        <h4>Original PDF</h4>
+        <p>Version A — the baseline</p>
+        <div class="file-name" id="nameA"></div>
+      </div>
+      <div class="mini-drop" id="dropB" ondragover="ev(event,'B')" ondragleave="el('B')" ondrop="ed(event,'B')">
+        <input type="file" accept=".pdf" onchange="loadDrop(event,'B')"/>
+        <div class="drop-icon">📄</div>
+        <h4>Modified PDF</h4>
+        <p>Version B — the updated version</p>
+        <div class="file-name" id="nameB"></div>
+      </div>
+    </div>
+
+    <div class="action-bar" id="compareBar" style="display:none;">
+      <button class="btn-action" onclick="runCompare()">🔍 Compare PDFs</button>
+      <div class="progress-wrap" id="progressWrap" style="display:none;">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+        <div class="progress-label" id="progressLabel">Comparing…</div>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <!-- Results -->
+    <div id="resultsWrap" style="display:none;">
+      <div class="diff-stats" id="diffStats"></div>
+
+      <div class="legend" style="margin-top:16px;">
+        <span style="font-size:13px;font-weight:500;color:var(--text-secondary);">Legend:</span>
+        <div class="legend-item"><div class="legend-dot" style="background:#bbf7d0"></div><span style="font-size:12px;">Added</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#fecaca"></div><span style="font-size:12px;">Removed</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#fed7aa"></div><span style="font-size:12px;">Changed</span></div>
+      </div>
+
+      <!-- Side-by-side visual -->
+      <div class="compare-view" id="compareView">
+        <div class="compare-pane">
+          <div class="pane-label">
+            <span id="labelA">Original</span>
+            <span class="badge badge-a">A</span>
+          </div>
+          <div class="pane-canvas-wrap">
+            <canvas id="canvasA"></canvas>
+            <canvas id="overlayA" class="diff-overlay"></canvas>
+          </div>
+        </div>
+        <div class="compare-pane">
+          <div class="pane-label">
+            <span id="labelB">Modified</span>
+            <span class="badge badge-b">B</span>
+          </div>
+          <div class="pane-canvas-wrap">
+            <canvas id="canvasB"></canvas>
+            <canvas id="overlayB" class="diff-overlay"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="compare-page-nav">
+        <button id="prevBtn" onclick="changePage(-1)" disabled>← Prev</button>
+        <span id="pageLabel">Page 1</span>
+        <button id="nextBtn" onclick="changePage(1)" disabled>Next →</button>
+      </div>
+
+      <!-- Text diff panel -->
+      <div class="diff-text-panel" style="margin-top:20px;">
+        <div class="diff-panel-header">Text differences — page <span id="diffPageNum">1</span></div>
+        <div id="diffLines"></div>
+      </div>
+
+      <div style="margin-top:20px;">
+        <button class="btn-action" onclick="resetTool()" style="background:var(--bg);color:var(--text-primary);border:1px solid var(--border);">
+          ↩ Compare different files
+        </button>
+      </div>
+    </div>
+
+    <div class="how-to">
+      <h2>How to compare PDFs</h2>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><h4>Upload two PDFs</h4><p>Drop your original (A) and updated (B) PDF into the boxes above.</p></div>
+        <div class="step"><div class="step-num">2</div><h4>Click Compare</h4><p>The tool extracts text from both and finds differences.</p></div>
+        <div class="step"><div class="step-num">3</div><h4>Review changes</h4><p>Green = added, red = removed. Navigate page by page.</p></div>
+        <div class="step"><div class="step-num">4</div><h4>Read the diff</h4><p>The text panel below shows an exact line-by-line comparison.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<script src="../js/utils.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  let docA = null, docB = null, nameA = '', nameB = '';
+  let pagesTextA = [], pagesTextB = [];
+  let currentPage = 1, maxPages = 1;
+
+  // Drag helpers
+  function ev(e,id){e.preventDefault();document.getElementById('drop'+id).classList.add('dragover');}
+  function el(id){document.getElementById('drop'+id).classList.remove('dragover');}
+  async function ed(e,id){e.preventDefault();el(id);const f=e.dataTransfer.files[0];if(f)await loadFile(f,id);}
+  async function loadDrop(e,id){const f=e.target.files[0];if(f)await loadFile(f,id);}
+
+  async function loadFile(file, id) {
+    if (!file.name.endsWith('.pdf')) { showError('Please upload PDF files only.'); return; }
+    clearError();
+    const bytes = await readFileAsArrayBuffer(file);
+    const doc = await pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise;
+    if (id === 'A') { docA = doc; nameA = file.name; document.getElementById('nameA').textContent = '✓ ' + file.name; document.getElementById('dropA').classList.add('loaded'); }
+    else            { docB = doc; nameB = file.name; document.getElementById('nameB').textContent = '✓ ' + file.name; document.getElementById('dropB').classList.add('loaded'); }
+    if (docA && docB) document.getElementById('compareBar').style.display = 'flex';
+  }
+
+  async function extractAllText(doc) {
+    const pages = [];
+    for (let p = 1; p <= doc.numPages; p++) {
+      const page = await doc.getPage(p);
+      const content = await page.getTextContent();
+      const lines = groupIntoLines(content.items);
+      pages.push(lines);
+    }
+    return pages;
+  }
+
+  function groupIntoLines(items) {
+    if (!items.length) return [];
+    const sorted = [...items].sort((a,b) => {
+      const ay = a.transform[5], by = b.transform[5];
+      return ay !== by ? by - ay : a.transform[4] - b.transform[4];
+    });
+    const rows = [];
+    let cur = [sorted[0]], curY = sorted[0].transform[5];
+    for (let i = 1; i < sorted.length; i++) {
+      if (Math.abs(sorted[i].transform[5] - curY) < 4) cur.push(sorted[i]);
+      else { rows.push(cur.map(x=>x.str).join(' ').trim()); cur = [sorted[i]]; curY = sorted[i].transform[5]; }
+    }
+    if (cur.length) rows.push(cur.map(x=>x.str).join(' ').trim());
+    return rows.filter(Boolean);
+  }
+
+  // Simple LCS-based diff
+  function diffLines(linesA, linesB) {
+    const m = linesA.length, n = linesB.length;
+    // Build LCS table
+    const dp = Array.from({length:m+1},()=>new Array(n+1).fill(0));
+    for (let i=1;i<=m;i++) for(let j=1;j<=n;j++) {
+      dp[i][j] = linesA[i-1]===linesB[j-1] ? dp[i-1][j-1]+1 : Math.max(dp[i-1][j],dp[i][j-1]);
+    }
+    // Backtrack
+    const result = [];
+    let i=m,j=n;
+    while(i>0||j>0){
+      if(i>0&&j>0&&linesA[i-1]===linesB[j-1]){result.unshift({type:'same',text:linesA[i-1]});i--;j--;}
+      else if(j>0&&(i===0||dp[i][j-1]>=dp[i-1][j])){result.unshift({type:'added',text:linesB[j-1]});j--;}
+      else{result.unshift({type:'removed',text:linesA[i-1]});i--;}
+    }
+    return result;
+  }
+
+  async function runCompare() {
+    clearError();
+    document.getElementById('progressWrap').style.display = 'block';
+    setProgress(10,'Extracting text from A…');
+
+    try {
+      pagesTextA = await extractAllText(docA);
+      setProgress(45,'Extracting text from B…');
+      pagesTextB = await extractAllText(docB);
+      setProgress(80,'Computing differences…');
+
+      maxPages = Math.max(docA.numPages, docB.numPages);
+      currentPage = 1;
+
+      // Compute global stats
+      let added=0, removed=0, same=0;
+      for (let p=0;p<maxPages;p++) {
+        const a = pagesTextA[p]||[], b = pagesTextB[p]||[];
+        const diff = diffLines(a,b);
+        diff.forEach(d=>{ if(d.type==='added') added++; else if(d.type==='removed') removed++; else same++; });
+      }
+
+      setProgress(95,'Rendering…');
+      document.getElementById('diffStats').innerHTML = `
+        <div class="diff-stat"><div class="val">${docA.numPages}</div><div class="lbl">Pages in A</div></div>
+        <div class="diff-stat"><div class="val">${docB.numPages}</div><div class="lbl">Pages in B</div></div>
+        <div class="diff-stat added"><div class="val">+${added}</div><div class="lbl">Lines added</div></div>
+        <div class="diff-stat removed"><div class="val">-${removed}</div><div class="lbl">Lines removed</div></div>
+        <div class="diff-stat"><div class="val">${same}</div><div class="lbl">Lines unchanged</div></div>
+        <div class="diff-stat changed"><div class="val">${Math.round((added+removed)/(added+removed+same||1)*100)}%</div><div class="lbl">Change rate</div></div>
+      `;
+
+      document.getElementById('labelA').textContent = nameA;
+      document.getElementById('labelB').textContent = nameB;
+      document.getElementById('resultsWrap').style.display = 'block';
+      document.getElementById('compareBar').style.display = 'none';
+
+      await renderPage(currentPage);
+      setProgress(100,'Done!');
+
+    } catch(err) {
+      showError('Error: ' + err.message);
+    } finally {
+      document.getElementById('progressWrap').style.display = 'none';
+    }
+  }
+
+  async function renderPage(num) {
+    document.getElementById('pageLabel').textContent = `Page ${num} of ${maxPages}`;
+    document.getElementById('prevBtn').disabled = num <= 1;
+    document.getElementById('nextBtn').disabled = num >= maxPages;
+    document.getElementById('diffPageNum').textContent = num;
+
+    await renderPaneCanvas(docA, num, 'canvasA', 'overlayA', pagesTextA[num-1]||[], 'A');
+    await renderPaneCanvas(docB, num, 'canvasB', 'overlayB', pagesTextB[num-1]||[], 'B');
+    renderDiffLines(num);
+  }
+
+  async function renderPaneCanvas(doc, num, canvasId, overlayId, lines, side) {
+    const canvas = document.getElementById(canvasId);
+    const overlay = document.getElementById(overlayId);
+    const ctx = canvas.getContext('2d');
+
+    if (!doc || num > doc.numPages) {
+      canvas.width = 400; canvas.height = 560;
+      ctx.fillStyle = '#f8f8f8'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#aaa'; ctx.font = '14px Inter'; ctx.textAlign = 'center';
+      ctx.fillText('No page', canvas.width/2, canvas.height/2);
+      overlay.width = canvas.width; overlay.height = canvas.height;
+      return;
+    }
+
+    const page = await doc.getPage(num);
+    const vp = page.getViewport({ scale: 1.2 });
+    canvas.width = vp.width; canvas.height = vp.height;
+    overlay.width = vp.width; overlay.height = vp.height;
+    overlay.style.height = '100%';
+
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+  }
+
+  function renderDiffLines(num) {
+    const lA = pagesTextA[num-1] || [];
+    const lB = pagesTextB[num-1] || [];
+    const diff = diffLines(lA, lB);
+
+    // Draw colored overlays
+    highlightDiff(docA, num, diff, 'overlayA', 'A');
+    highlightDiff(docB, num, diff, 'overlayB', 'B');
+
+    // Text panel
+    let html = '';
+    let ln = 1;
+    diff.forEach(d => {
+      const cls = d.type;
+      const prefix = cls==='added'?'+ ':cls==='removed'?'- ':'  ';
+      html += `<div class="diff-line ${cls}"><span class="ln">${ln++}</span><span class="content">${prefix}${escH(d.text)}</span></div>`;
+    });
+    document.getElementById('diffLines').innerHTML = html || '<p style="padding:16px;color:var(--text-muted);font-size:13px;">No text differences on this page.</p>';
+  }
+
+  function highlightDiff(doc, num, diff, overlayId, side) {
+    const overlay = document.getElementById(overlayId);
+    const ctx = overlay.getContext('2d');
+    ctx.clearRect(0,0,overlay.width,overlay.height);
+    if (!doc || num > doc.numPages) return;
+
+    // Simple approach: draw colored bands for changed lines proportionally
+    const total = diff.length;
+    if (!total) return;
+    const lineH = overlay.height / total;
+
+    diff.forEach((d, i) => {
+      if (d.type === 'same') return;
+      const y = i * lineH;
+      const color = d.type === 'added' ? 'rgba(134,239,172,0.45)' : 'rgba(252,165,165,0.45)';
+      ctx.fillStyle = color;
+      ctx.fillRect(0, y, overlay.width, Math.max(lineH, 2));
+      // Left border accent
+      ctx.fillStyle = d.type === 'added' ? 'rgba(22,163,74,0.9)' : 'rgba(220,38,38,0.9)';
+      ctx.fillRect(0, y, 4, Math.max(lineH, 2));
+    });
+  }
+
+  async function changePage(dir) {
+    const next = currentPage + dir;
+    if (next < 1 || next > maxPages) return;
+    currentPage = next;
+    await renderPage(currentPage);
+  }
+
+  function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function resetTool() {
+    docA=null;docB=null;pagesTextA=[];pagesTextB=[];currentPage=1;maxPages=1;
+    document.getElementById('dropA').classList.remove('loaded');
+    document.getElementById('dropB').classList.remove('loaded');
+    document.getElementById('nameA').textContent='';
+    document.getElementById('nameB').textContent='';
+    document.getElementById('compareBar').style.display='none';
+    document.getElementById('resultsWrap').style.display='none';
+    clearError();
+  }
+</script>
+
+<script src="../js/header.js"></script>
+<script src="../js/footer.js"></script>
+</body>
+</html>

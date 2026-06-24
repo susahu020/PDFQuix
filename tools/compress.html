@@ -3,27 +3,20 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Compress PDF — PDFQuick</title>
+  <title>Compress PDF — PDFQuix</title>
   <meta name="description" content="Compress PDF files online for free. Reduce size without losing quality. No signup required."/>
   <link rel="stylesheet" href="../css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
-  <!-- pdf-lib from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script>
+(function(){
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
 </head>
 <body>
-
-  <header class="header">
-    <div class="container header-inner">
-      <a href="../index.html" class="logo">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <rect width="28" height="28" rx="8" fill="#E63946"/>
-          <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
-          <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
-        </svg>
-        PDFQuick
-      </a>
-    </div>
-  </header>
 
   <!-- Hero -->
   <section class="tool-page-hero">
@@ -67,7 +60,7 @@
           <span class="option-label">Remove metadata</span>
           <select class="option-select" id="metadata">
             <option value="yes">Yes — strip author, dates, etc.</option>
-            <option value="no">No — keep metadata</option>
+            <option value="no" selected>No — keep metadata</option>
           </select>
         </div>
       </div>
@@ -110,32 +103,26 @@
     </div>
   </section>
 
-  <footer class="footer">
-    <div class="container footer-inner">
-      <span class="logo-small">PDFQuick</span>
-      <p>Free PDF tools for everyone.</p>
-    </div>
-  </footer>
-
   <script src="../js/utils.js"></script>
   <script>
-    const { PDFDocument } = PDFLib;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const { PDFDocument, rgb } = PDFLib;
+
     let selectedFile = null;
     let compressedBytes = null;
 
-    const dropzone    = document.getElementById('dropzone');
-    const fileInput   = document.getElementById('fileInput');
-    const fileList    = document.getElementById('fileList');
-    const optionsPanel= document.getElementById('optionsPanel');
-    const actionBar   = document.getElementById('actionBar');
-    const progressWrap= document.getElementById('progressWrap');
-    const compressBtn = document.getElementById('compressBtn');
-    const resultBox   = document.getElementById('resultBox');
-    const resultDesc  = document.getElementById('resultDesc');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const errorBox    = document.getElementById('errorBox');
+    const dropzone     = document.getElementById('dropzone');
+    const fileInput    = document.getElementById('fileInput');
+    const fileList     = document.getElementById('fileList');
+    const optionsPanel = document.getElementById('optionsPanel');
+    const actionBar    = document.getElementById('actionBar');
+    const progressWrap = document.getElementById('progressWrap');
+    const compressBtn  = document.getElementById('compressBtn');
+    const resultBox    = document.getElementById('resultBox');
+    const resultDesc   = document.getElementById('resultDesc');
+    const downloadBtn  = document.getElementById('downloadBtn');
+    const errorBox     = document.getElementById('errorBox');
 
-    // Setup drag-and-drop
     setupDropzone(dropzone, files => handleFiles(files));
 
     fileInput.addEventListener('change', e => {
@@ -151,7 +138,6 @@
       resultBox.classList.remove('visible');
       compressedBytes = null;
 
-      // Render file item
       renderFileList([selectedFile], fileList, () => {
         selectedFile = null;
         fileList.innerHTML = '';
@@ -163,47 +149,127 @@
       actionBar.style.display    = 'flex';
     }
 
+    // Quality presets: render scale and JPEG quality
+    const QUALITY_PRESETS = {
+      high:   { scale: 1.5, jpegQ: 0.85 },
+      medium: { scale: 1.2, jpegQ: 0.70 },
+      low:    { scale: 0.9, jpegQ: 0.50 },
+    };
+
     compressBtn.addEventListener('click', async () => {
       if (!selectedFile) return;
       clearError();
       compressBtn.disabled = true;
       progressWrap.style.display = 'block';
-      setProgress(10, 'Reading file...');
 
       try {
-        const arrayBuffer = await readFileAsArrayBuffer(selectedFile);
-        setProgress(30, 'Parsing PDF...');
+        const quality = document.getElementById('quality').value;
+        const stripMeta = document.getElementById('metadata').value === 'yes';
+        const preset = QUALITY_PRESETS[quality];
 
-        const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-        setProgress(50, 'Applying compression...');
+        setProgress(5, 'Reading file…');
+        const originalBuffer = await readFileAsArrayBuffer(selectedFile);
+        const originalSize = originalBuffer.byteLength;
 
-        // Remove metadata if requested
-        if (document.getElementById('metadata').value === 'yes') {
-          pdfDoc.setTitle('');
-          pdfDoc.setAuthor('');
-          pdfDoc.setSubject('');
-          pdfDoc.setKeywords([]);
-          pdfDoc.setProducer('PDFQuick');
-          pdfDoc.setCreator('PDFQuick');
+        // --- Candidate 1: lossless repack -----------------------------------
+        // Re-saves the PDF with object streams (smaller cross-reference tables)
+        // and, if requested, strips identifying metadata. No pixels are touched,
+        // so text stays selectable/searchable. This is cheap to compute and acts
+        // as our safety net: it is very rarely larger than the original.
+        setProgress(10, 'Optimizing PDF structure…');
+        let losslessBytes = null;
+        try {
+          const losslessDoc = await PDFDocument.load(originalBuffer.slice(0), { ignoreEncryption: true });
+          if (stripMeta) {
+            losslessDoc.setTitle('');
+            losslessDoc.setAuthor('');
+            losslessDoc.setSubject('');
+            losslessDoc.setKeywords([]);
+            losslessDoc.setProducer('PDFQuix');
+            losslessDoc.setCreator('PDFQuix');
+          }
+          losslessBytes = await losslessDoc.save({ useObjectStreams: true });
+        } catch (e) { /* if this fails we still have the rasterized candidate + original */ }
+
+        // --- Candidate 2: rasterize pages to JPEG ----------------------------
+        // Genuinely shrinks scanned/image-heavy PDFs, but can bloat ordinary
+        // text/vector PDFs (an entire page of text becomes one big photo) — that
+        // is exactly why we never trust this candidate blindly below.
+        setProgress(15, 'Loading PDF…');
+        const pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(originalBuffer.slice(0)) }).promise;
+        const numPages = pdfJsDoc.numPages;
+        const newDoc = await PDFDocument.create();
+
+        if (stripMeta) {
+          newDoc.setTitle('');
+          newDoc.setAuthor('');
+          newDoc.setSubject('');
+          newDoc.setKeywords([]);
+          newDoc.setProducer('PDFQuix');
+          newDoc.setCreator('PDFQuix');
         }
 
-        setProgress(70, 'Saving...');
+        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+          const pct = 15 + Math.round((pageNum / numPages) * 65);
+          setProgress(pct, `Rendering page ${pageNum} of ${numPages}…`);
 
-        // Quality → object streams on/off
-        const quality = document.getElementById('quality').value;
-        const useObjectStreams = quality !== 'high';
+          const pjsPage = await pdfJsDoc.getPage(pageNum);
+          const viewport = pjsPage.getViewport({ scale: preset.scale });
 
-        compressedBytes = await pdfDoc.save({ useObjectStreams });
+          const canvas = document.createElement('canvas');
+          canvas.width  = Math.round(viewport.width);
+          canvas.height = Math.round(viewport.height);
+          const ctx = canvas.getContext('2d');
+          await pjsPage.render({ canvasContext: ctx, viewport }).promise;
+
+          const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', preset.jpegQ));
+          const imgBytes = new Uint8Array(await blob.arrayBuffer());
+
+          const jpgImage = await newDoc.embedJpg(imgBytes);
+          const origVp = pjsPage.getViewport({ scale: 1 });
+          const newPage = newDoc.addPage([origVp.width, origVp.height]);
+          newPage.drawImage(jpgImage, {
+            x: 0, y: 0,
+            width:  origVp.width,
+            height: origVp.height,
+          });
+        }
+
+        setProgress(90, 'Comparing results…');
+        const rasterizedBytes = await newDoc.save({ useObjectStreams: true });
+
+        // --- Pick whichever candidate is genuinely smallest -------------------
+        // This is the key fix: we NEVER ship a "compressed" file that is bigger
+        // than what the user uploaded. If rasterizing made things worse (common
+        // for text-heavy PDFs), we fall back to the lossless repack, and if even
+        // that didn't help, we fall back to the untouched original.
+        const candidates = [
+          { bytes: new Uint8Array(originalBuffer), size: originalSize, method: 'original' },
+        ];
+        if (losslessBytes) candidates.push({ bytes: losslessBytes, size: losslessBytes.length, method: 'lossless' });
+        candidates.push({ bytes: rasterizedBytes, size: rasterizedBytes.length, method: 'rasterized' });
+
+        const winner = candidates.reduce((best, c) => c.size < best.size ? c : best, candidates[0]);
+        compressedBytes = winner.bytes;
         setProgress(100, 'Done!');
 
-        const origSize  = formatBytes(selectedFile.size);
-        const newSize   = formatBytes(compressedBytes.length);
-        const reduction = (((selectedFile.size - compressedBytes.length) / selectedFile.size) * 100).toFixed(1);
-        const saved     = reduction > 0 ? `Reduced by ${reduction}%` : 'File already optimized';
+        const origSize  = formatBytes(originalSize);
+        const newSize   = formatBytes(winner.size);
+        const reduction = (((originalSize - winner.size) / originalSize) * 100).toFixed(1);
 
-        resultDesc.textContent = `Original: ${origSize} → Compressed: ${newSize}. ${saved}.`;
+        let saved;
+        if (winner.method === 'rasterized') {
+          saved = `Reduced by ${reduction}% by re-rendering pages as images (text is no longer selectable/searchable in the result).`;
+        } else if (winner.method === 'lossless' && winner.size < originalSize) {
+          saved = `Reduced by ${reduction}% by optimizing the file structure. Text and quality are fully preserved — re-rendering pages as images would have made this particular file larger, so it was skipped.`;
+        } else {
+          saved = `This PDF is already well optimized — no method available here could shrink it further without reducing quality, so the original file is returned unchanged.`;
+        }
+
+        resultDesc.textContent = `Original: ${origSize} → Result: ${newSize}. ${saved}`;
         downloadBtn.onclick = () => downloadFile(compressedBytes, 'compressed_' + selectedFile.name);
         resultBox.classList.add('visible');
+        resultBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
       } catch (err) {
         showError('Something went wrong: ' + err.message);
@@ -223,5 +289,8 @@
       clearError();
     }
   </script>
+
+<script src="../js/header.js"></script>
+<script src="../js/footer.js"></script>
 </body>
 </html>

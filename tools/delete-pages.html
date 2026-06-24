@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Delete PDF Pages — PDFQuix</title>
+  <meta name="description" content="Remove specific pages from a PDF file online for free. Preview pages and select which ones to delete. No signup required."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <style>
+    .pages-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .page-thumb {
+      background: var(--white);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      transition: all .15s;
+    }
+    .page-thumb:hover { border-color: var(--red); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+    .page-thumb.selected {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(230,57,70,.2);
+    }
+    .page-thumb canvas { display: block; width: 100%; }
+    .page-label {
+      font-size: 12px; font-weight: 500; color: var(--text-secondary);
+      text-align: center; padding: 7px 0;
+      border-top: 1px solid var(--border);
+    }
+    .page-thumb.selected .page-label { color: var(--red); background: var(--red-light); }
+    .delete-badge {
+      position: absolute; top: 8px; right: 8px;
+      background: var(--red); color: white;
+      font-size: 11px; font-weight: 700;
+      width: 22px; height: 22px; border-radius: 50%;
+      display: none; align-items: center; justify-content: center;
+    }
+    .page-thumb.selected .delete-badge { display: flex; }
+    .select-bar {
+      display: flex; align-items: center; gap: 12px;
+      flex-wrap: wrap; margin-top: 20px;
+      padding: 14px 18px;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+    .select-bar span { font-size: 14px; color: var(--text-secondary); flex: 1; }
+    .btn-sm {
+      font-size: 13px; font-weight: 500; padding: 7px 16px;
+      border-radius: var(--radius-sm); border: 1px solid var(--border);
+      background: var(--white); cursor: pointer; transition: all .15s;
+    }
+    .btn-sm:hover { background: var(--bg); border-color: var(--text-muted); }
+    .loading-grid {
+      text-align: center; padding: 60px 0;
+      color: var(--text-secondary); font-size: 15px;
+    }
+  </style>
+<script>
+(function(){
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
+</head>
+<body>
+
+  
+
+  <section class="tool-page-hero">
+    <div class="container">
+      <a href="../index.html" class="back-link">← All tools</a>
+      <h1>Delete PDF Pages</h1>
+      <p>Preview all pages, click to select the ones you want removed, then download the clean PDF.</p>
+    </div>
+  </section>
+
+  <section class="tool-page-body">
+    <div class="container">
+
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept=".pdf"/>
+        <div class="dropzone-icon">🗑️</div>
+        <h3>Drop your PDF here</h3>
+        <p>or click to browse your files</p>
+        <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
+          Choose PDF
+        </button>
+      </div>
+
+      <div id="editorWrap" style="display:none;">
+        <div class="select-bar">
+          <span id="selectionInfo">Click pages to mark them for deletion</span>
+          <button class="btn-sm" onclick="selectAll()">Select all</button>
+          <button class="btn-sm" onclick="selectNone()">Deselect all</button>
+          <button class="btn-sm" onclick="invertSelection()">Invert</button>
+        </div>
+
+        <div id="pagesGrid" class="pages-grid">
+          <div class="loading-grid">⏳ Rendering pages…</div>
+        </div>
+
+        <div class="action-bar" style="margin-top:24px;">
+          <button class="btn-action" id="deleteBtn" onclick="deletePages()">
+            🗑️ Delete selected pages
+          </button>
+          <div class="progress-wrap" id="progressWrap" style="display:none;">
+            <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+            <div class="progress-label" id="progressLabel">Processing...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error-box" id="errorBox"></div>
+
+      <div class="result-box" id="resultBox">
+        <h3>✅ Pages deleted!</h3>
+        <p id="resultDesc"></p>
+        <button class="btn-download" id="downloadBtn">⬇ Download PDF</button>
+        <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Start over</button>
+      </div>
+
+      <div class="how-to">
+        <h2>How to delete PDF pages</h2>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><h4>Upload your PDF</h4><p>Drop or browse any PDF file to load its pages.</p></div>
+          <div class="step"><div class="step-num">2</div><h4>Select pages</h4><p>Click the pages you want to remove. They'll be highlighted in red.</p></div>
+          <div class="step"><div class="step-num">3</div><h4>Delete</h4><p>Click "Delete selected pages" to remove them.</p></div>
+          <div class="step"><div class="step-num">4</div><h4>Download</h4><p>Save your new PDF with those pages gone.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  
+  <script src="../js/utils.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const { PDFDocument } = PDFLib;
+
+    let pdfJsDoc = null, originalBytes = null, totalPages = 0;
+    let selectedPages = new Set(); // 1-indexed
+
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+
+    setupDropzone(dropzone, files => loadPDF(files[0]));
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) loadPDF(e.target.files[0]); });
+
+    async function loadPDF(file) {
+      if (!file || !file.name.endsWith('.pdf')) { showError('Please upload a PDF.'); return; }
+      clearError();
+      originalBytes = await readFileAsArrayBuffer(file);
+      // Copy the buffer for pdfjs — its worker transfers (detaches) the ArrayBuffer,
+      // so we keep originalBytes intact for pdf-lib to use later.
+      pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(originalBytes.slice(0)) }).promise;
+      totalPages = pdfJsDoc.numPages;
+      selectedPages.clear();
+      dropzone.style.display = 'none';
+      document.getElementById('editorWrap').style.display = 'block';
+      document.getElementById('resultBox').classList.remove('visible');
+      await renderThumbnails();
+    }
+
+    async function renderThumbnails() {
+      const grid = document.getElementById('pagesGrid');
+      grid.innerHTML = '<div class="loading-grid">⏳ Rendering pages…</div>';
+
+      const thumbs = [];
+      for (let i = 1; i <= totalPages; i++) {
+        const page = await pdfJsDoc.getPage(i);
+        const vp = page.getViewport({ scale: 0.4 });
+        const canvas = document.createElement('canvas');
+        canvas.width = vp.width;
+        canvas.height = vp.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+
+        const thumb = document.createElement('div');
+        thumb.className = 'page-thumb';
+        thumb.dataset.page = i;
+
+        const badge = document.createElement('div');
+        badge.className = 'delete-badge';
+        badge.textContent = '✕';
+
+        const label = document.createElement('div');
+        label.className = 'page-label';
+        label.textContent = `Page ${i}`;
+
+        thumb.appendChild(badge);
+        thumb.appendChild(canvas);
+        thumb.appendChild(label);
+        thumb.addEventListener('click', () => togglePage(i, thumb));
+        thumbs.push(thumb);
+      }
+
+      grid.innerHTML = '';
+      thumbs.forEach(t => grid.appendChild(t));
+      updateInfo();
+    }
+
+    function togglePage(num, el) {
+      if (selectedPages.has(num)) { selectedPages.delete(num); el.classList.remove('selected'); }
+      else { selectedPages.add(num); el.classList.add('selected'); }
+      updateInfo();
+    }
+
+    function updateInfo() {
+      const n = selectedPages.size;
+      const info = document.getElementById('selectionInfo');
+      if (n === 0) info.textContent = 'Click pages to mark them for deletion';
+      else if (n === totalPages) info.textContent = `⚠️ All ${n} pages selected — at least 1 must remain`;
+      else info.textContent = `${n} page${n>1?'s':''} selected for deletion · ${totalPages - n} will remain`;
+      document.getElementById('deleteBtn').disabled = n === 0 || n === totalPages;
+    }
+
+    function selectAll() {
+      document.querySelectorAll('.page-thumb').forEach(t => { selectedPages.add(+t.dataset.page); t.classList.add('selected'); });
+      updateInfo();
+    }
+    function selectNone() {
+      document.querySelectorAll('.page-thumb').forEach(t => { selectedPages.delete(+t.dataset.page); t.classList.remove('selected'); });
+      updateInfo();
+    }
+    function invertSelection() {
+      document.querySelectorAll('.page-thumb').forEach(t => {
+        const p = +t.dataset.page;
+        if (selectedPages.has(p)) { selectedPages.delete(p); t.classList.remove('selected'); }
+        else { selectedPages.add(p); t.classList.add('selected'); }
+      });
+      updateInfo();
+    }
+
+    async function deletePages() {
+      clearError();
+      if (selectedPages.size === 0) {
+        showError('Please select at least one page to delete.');
+        return;
+      }
+      if (selectedPages.size === totalPages) {
+        showError('You can\'t delete every page — a PDF needs at least one page left. Deselect at least one page and try again.');
+        return;
+      }
+      document.getElementById('progressWrap').style.display = 'block';
+      setProgress(20, 'Loading PDF…');
+
+      try {
+        const pdfLib = await PDFDocument.load(originalBytes);
+        setProgress(50, 'Removing pages…');
+
+        // Remove in reverse order to keep indices valid
+        const toRemove = Array.from(selectedPages).sort((a,b) => b - a);
+        toRemove.forEach(p => pdfLib.removePage(p - 1));
+
+        setProgress(80, 'Saving…');
+        const saved = await pdfLib.save();
+        setProgress(100, 'Done!');
+
+        const removed = selectedPages.size;
+        const remaining = totalPages - removed;
+        document.getElementById('resultDesc').textContent = `Removed ${removed} page${removed>1?'s':''}. New PDF has ${remaining} page${remaining>1?'s':''} (${formatBytes(saved.length)}).`;
+        document.getElementById('downloadBtn').onclick = () => downloadFile(saved, 'pages_deleted.pdf');
+        document.getElementById('resultBox').classList.add('visible');
+        document.getElementById('resultBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } catch(err) {
+        showError('Error: ' + err.message);
+      } finally {
+        document.getElementById('progressWrap').style.display = 'none';
+      }
+    }
+
+    function resetTool() {
+      pdfJsDoc = null; originalBytes = null; totalPages = 0; selectedPages.clear();
+      dropzone.style.display = 'block';
+      document.getElementById('editorWrap').style.display = 'none';
+      document.getElementById('resultBox').classList.remove('visible');
+      document.getElementById('pagesGrid').innerHTML = '';
+      clearError();
+    }
+  </script>
+
+<script src="../js/header.js"></script>
+<script src="../js/footer.js"></script>
+</body>
+</html>

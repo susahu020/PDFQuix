@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>JPG to PDF — PDFQuick</title>
+  <title>JPG to PDF — PDFQuix</title>
   <meta name="description" content="Convert JPG, PNG, and images to PDF online for free. Combine multiple images into one PDF. No signup needed."/>
   <link rel="stylesheet" href="../css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -38,21 +38,16 @@
     }
     .drag-hint { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
   </style>
+<script>
+(function(){
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
 </head>
 <body>
 
-  <header class="header">
-    <div class="container header-inner">
-      <a href="../index.html" class="logo">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <rect width="28" height="28" rx="8" fill="#E63946"/>
-          <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
-          <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
-        </svg>
-        PDFQuick
-      </a>
-    </div>
-  </header>
+  
 
   <section class="tool-page-hero">
     <div class="container">
@@ -144,13 +139,7 @@
     </div>
   </section>
 
-  <footer class="footer">
-    <div class="container footer-inner">
-      <span class="logo-small">PDFQuick</span>
-      <p>Free PDF tools for everyone.</p>
-    </div>
-  </footer>
-
+  
   <script src="../js/utils.js"></script>
   <script>
     const { PDFDocument, rgb } = PDFLib;
@@ -306,5 +295,8 @@
       clearError();
     }
   </script>
+
+<script src="../js/header.js"></script>
+<script src="../js/footer.js"></script>
 </body>
 </html>

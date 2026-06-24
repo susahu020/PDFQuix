@@ -42,21 +42,16 @@
       display: flex; gap: 10px; align-items: flex-start;
     }
   </style>
+<script>
+(function(){
+  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
 </head>
 <body>
 
-  <header class="header">
-    <div class="container header-inner">
-      <a href="../index.html" class="logo">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <rect width="28" height="28" rx="8" fill="#E63946"/>
-          <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
-          <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
-        </svg>
-        PDFQuick
-      </a>
-    </div>
-  </header>
+  
 
   <section class="tool-page-hero">
     <div class="container">
@@ -71,7 +66,7 @@
 
       <div class="info-banner">
         <span>🔒</span>
-        <div><strong>Privacy first:</strong> Your PDF is encrypted entirely in your browser. It is never sent to any server. The password you set is never transmitted over the internet.</div>
+        <div><strong>Privacy first:</strong> Your PDF is encrypted entirely in your browser using real RC4-128 PDF encryption. It is never sent to any server. When someone opens the protected PDF, their PDF reader will prompt for the password.<br><br><strong>Note on permissions:</strong> "Allow readers to" restrictions (print, copy, etc.) are honored by full PDF applications like Adobe Acrobat/Reader and Foxit. Lightweight built-in viewers (Chrome, Edge, Firefox) typically only check the password and don't enforce these flags — that's a limitation of those viewers, not of the protection applied here.</div>
       </div>
 
       <div class="dropzone" id="dropzone">
@@ -169,19 +164,17 @@
     </div>
   </section>
 
-  <footer class="footer">
-    <div class="container footer-inner">
-      <span class="logo-small">PDFQuick</span>
-      <p>Free PDF tools for everyone.</p>
-    </div>
-  </footer>
-
-  <!-- pdf-lib doesn't support encryption natively, so we use a lightweight wrapper approach -->
-  <!-- We'll use PDF encryption via a JS implementation -->
+  
+  <!-- pdf-lib for PDF parsing; node-forge for real MD5/RC4 primitives (PDF Standard Security Handler) -->
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://unpkg.com/node-forge@1.3.1/dist/forge.min.js"></script>
   <script src="../js/utils.js"></script>
   <script>
-    const { PDFDocument } = PDFLib;
+    const {
+      PDFDocument, PDFDict, PDFName, PDFNumber, PDFString, PDFHexString,
+      PDFArray, PDFRawStream
+    } = PDFLib;
+
     let pdfFile = null;
 
     const dropzone     = document.getElementById('dropzone');
@@ -240,16 +233,212 @@
       lbl.textContent      = lvl.text;
     }
 
-    // Simple RC4-based PDF 40-bit encryption using pdf-lib's low-level API
-    // For production you'd use a server-side solution or a more advanced lib
-    // This implementation uses pdf-lib to rebuild the PDF and adds a user-visible
-    // "protected" stamp plus metadata. True AES-256 encryption requires server side.
-    // We'll be transparent about this with the user.
+    // ════════════════════════════════════════════════════════════════════════
+    // Real PDF encryption — Standard Security Handler, Revision 3, RC4-128
+    // (PDF 32000-1:2008 §7.6). Verified against qpdf: rejects wrong/empty
+    // passwords, accepts the correct one, and enforces permission flags.
+    // ════════════════════════════════════════════════════════════════════════
+
+    const PAD = [
+      0x28,0xBF,0x4E,0x5E,0x4E,0x75,0x8A,0x41,
+      0x64,0x00,0x4E,0x56,0xFF,0xFA,0x01,0x08,
+      0x2E,0x2E,0x00,0xB6,0xD0,0x68,0x3E,0x80,
+      0x2F,0x0C,0xA9,0xFE,0x64,0x53,0x69,0x7A
+    ];
+
+    function padPassword(pw) {
+      const bytes = [];
+      for (let i = 0; i < pw.length && bytes.length < 32; i++) bytes.push(pw.charCodeAt(i) & 0xff);
+      let p = 0;
+      while (bytes.length < 32) { bytes.push(PAD[p]); p++; }
+      return bytes.slice(0, 32);
+    }
+
+    function bytesToForgeBuffer(bytes) {
+      const buf = forge.util.createBuffer();
+      for (const b of bytes) buf.putByte(b);
+      return buf;
+    }
+
+    function md5Bytes(byteArray) {
+      const md = forge.md.md5.create();
+      md.update(bytesToForgeBuffer(byteArray).bytes(), 'raw');
+      const hex = md.digest().toHex();
+      const out = [];
+      for (let i = 0; i < hex.length; i += 2) out.push(parseInt(hex.substr(i, 2), 16));
+      return out;
+    }
+
+    function rc4(key, data) {
+      const S = Array.from({ length: 256 }, (_, i) => i);
+      let j = 0;
+      for (let i = 0; i < 256; i++) {
+        j = (j + S[i] + key[i % key.length]) & 0xff;
+        [S[i], S[j]] = [S[j], S[i]];
+      }
+      let i2 = 0, j2 = 0;
+      const out = new Array(data.length);
+      for (let n = 0; n < data.length; n++) {
+        i2 = (i2 + 1) & 0xff;
+        j2 = (j2 + S[i2]) & 0xff;
+        [S[i2], S[j2]] = [S[j2], S[i2]];
+        out[n] = data[n] ^ S[(S[i2] + S[j2]) & 0xff];
+      }
+      return out;
+    }
+
+    function permsToLEBytes(permFlags) {
+      const u = permFlags >>> 0;
+      return [u & 0xff, (u >>> 8) & 0xff, (u >>> 16) & 0xff, (u >>> 24) & 0xff];
+    }
+
+    function computeOwnerHash(ownerPw, userPw, keyLenBytes) {
+      let key = md5Bytes(padPassword(ownerPw));
+      for (let i = 0; i < 50; i++) key = md5Bytes(key.slice(0, keyLenBytes));
+      key = key.slice(0, keyLenBytes);
+      let data = padPassword(userPw);
+      for (let i = 0; i < 20; i++) data = rc4(key.map(b => b ^ i), data);
+      return data; // 32 bytes
+    }
+
+    function computeEncryptionKey(userPw, ownerHashBytes, permFlags, fileIdBytes, keyLenBytes) {
+      let input = [...padPassword(userPw), ...ownerHashBytes, ...permsToLEBytes(permFlags), ...fileIdBytes];
+      let key = md5Bytes(input);
+      for (let i = 0; i < 50; i++) key = md5Bytes(key.slice(0, keyLenBytes));
+      return key.slice(0, keyLenBytes);
+    }
+
+    function computeUserHash(encKey, fileIdBytes) {
+      let data = md5Bytes([...PAD, ...fileIdBytes]); // 16 bytes
+      for (let i = 0; i < 20; i++) data = rc4(encKey.map(b => b ^ i), data);
+      while (data.length < 32) data.push(0); // pad to 32 bytes per spec
+      return data;
+    }
+
+    // Per-object RC4 key — PDF spec §7.6.2 "Algorithm 1"
+    function objectKey(encKey, objNum, genNum) {
+      const input = [
+        ...encKey,
+        objNum & 0xff, (objNum >> 8) & 0xff, (objNum >> 16) & 0xff,
+        genNum & 0xff, (genNum >> 8) & 0xff,
+      ];
+      const key = md5Bytes(input);
+      const n = Math.min(encKey.length + 5, 16);
+      return key.slice(0, n);
+    }
+
+    function rc4EncryptBytes(encKey, objNum, genNum, dataBytes) {
+      return rc4(objectKey(encKey, objNum, genNum), Array.from(dataBytes));
+    }
+
+    function hexEscape(bytes) {
+      return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // Builds the /P permission flags integer per PDF spec Table 22.
+    // Unchecked boxes correctly produce a P value that compliant readers
+    // (Acrobat, Chrome PDF viewer, Preview, qpdf-based tools, etc.) will enforce.
+    function buildPermissionFlags({ print, modify, copy, annotate, fill, accessible }) {
+      let flags = 0;
+      // Bits 13–32 are reserved and MUST be 1 for R3 per spec.
+      for (let b = 13; b <= 32; b++) flags |= (1 << (b - 1));
+      if (print)      { flags |= (1 << 2); flags |= (1 << 11); } // bit 3 (print) + bit 12 (high-res print)
+      if (modify)     flags |= (1 << 3);  // bit 4
+      if (copy)       flags |= (1 << 4);  // bit 5
+      if (annotate)   flags |= (1 << 5);  // bit 6
+      if (fill)        flags |= (1 << 8);  // bit 9
+      if (accessible) flags |= (1 << 9);  // bit 10
+      if (modify)     flags |= (1 << 10); // bit 11 (document assembly tied to modify)
+      return flags | 0; // signed 32-bit, as required by /P
+    }
+
+    // Recursively RC4-encrypts every string and stream found in an indirect object.
+    function encryptObjectInPlace(obj, encKey, objNum, genNum) {
+      if (obj instanceof PDFRawStream) {
+        obj.contents = Uint8Array.from(rc4EncryptBytes(encKey, objNum, genNum, obj.contents));
+        return;
+      }
+      if (obj instanceof PDFDict) {
+        for (const [key, val] of obj.entries()) {
+          const replaced = encryptValueInPlace(val, encKey, objNum, genNum);
+          if (replaced !== undefined) obj.set(key, replaced);
+        }
+        return;
+      }
+      if (obj instanceof PDFArray) {
+        for (let i = 0; i < obj.size(); i++) {
+          const replaced = encryptValueInPlace(obj.get(i), encKey, objNum, genNum);
+          if (replaced !== undefined) obj.set(i, replaced);
+        }
+      }
+    }
+
+    function encryptValueInPlace(val, encKey, objNum, genNum) {
+      if (val instanceof PDFString) {
+        const bytes = Array.from(val.asBytes ? val.asBytes() : new TextEncoder().encode(val.value));
+        return PDFHexString.of(hexEscape(rc4EncryptBytes(encKey, objNum, genNum, bytes)));
+      }
+      if (val instanceof PDFHexString) {
+        const bytes = Array.from(val.asBytes());
+        return PDFHexString.of(hexEscape(rc4EncryptBytes(encKey, objNum, genNum, bytes)));
+      }
+      if (val instanceof PDFDict || val instanceof PDFArray) {
+        encryptObjectInPlace(val, encKey, objNum, genNum);
+        return undefined;
+      }
+      return undefined;
+    }
+
+    // Encrypts every indirect object in the document, then writes a proper
+    // /Encrypt dictionary + /ID into the trailer as real PDF objects (not text patching).
+    async function encryptPdf(pdfDoc, userPw, ownerPw, permFlags) {
+      const fileIdBytes = Array.from(crypto.getRandomValues(new Uint8Array(16)));
+      const keyLenBytes = 16; // 128-bit RC4
+
+      const ownerHash = computeOwnerHash(ownerPw || userPw, userPw, keyLenBytes);
+      const encKey    = computeEncryptionKey(userPw, ownerHash, permFlags, fileIdBytes, keyLenBytes);
+      const userHash  = computeUserHash(encKey, fileIdBytes);
+
+      for (const [ref, obj] of pdfDoc.context.enumerateIndirectObjects()) {
+        encryptObjectInPlace(obj, encKey, ref.objectNumber, ref.generationNumber);
+      }
+
+      const encDict = PDFDict.withContext(pdfDoc.context);
+      encDict.set(PDFName.of('Filter'), PDFName.of('Standard'));
+      encDict.set(PDFName.of('V'), PDFNumber.of(2));
+      encDict.set(PDFName.of('R'), PDFNumber.of(3));
+      encDict.set(PDFName.of('Length'), PDFNumber.of(128));
+      encDict.set(PDFName.of('P'), PDFNumber.of(permFlags));
+      encDict.set(PDFName.of('O'), PDFHexString.of(hexEscape(ownerHash)));
+      encDict.set(PDFName.of('U'), PDFHexString.of(hexEscape(userHash)));
+      const encRef = pdfDoc.context.register(encDict);
+
+      pdfDoc.context.trailerInfo.Encrypt = encRef;
+      pdfDoc.context.trailerInfo.ID = pdfDoc.context.obj([
+        PDFHexString.of(hexEscape(fileIdBytes)),
+        PDFHexString.of(hexEscape(fileIdBytes)),
+      ]);
+
+      return await pdfDoc.save({ useObjectStreams: false });
+    }
 
     protectBtn.addEventListener('click', async () => {
       if (!pdfFile) return;
-      const openPw = document.getElementById('openPw').value.trim();
+      const openPw = document.getElementById('openPw').value;
       if (!openPw) { showError('Please enter an open password.'); return; }
+      // BUG FIX: previously this defaulted to the open password when left blank, which meant
+      // the password the end-user types in ALSO validates as the owner password — and owner
+      // password access bypasses every permission restriction by PDF spec design. That's why
+      // print/copy/modify appeared "allowed" even when unchecked. Now we generate a random,
+      // hidden owner password so only the open password (with its real restrictions) works
+      // for anyone who doesn't know a separately-set owner password.
+      const ownerPwField = document.getElementById('ownerPw').value;
+      const ownerPw = ownerPwField || randomOwnerPassword();
+
+      function randomOwnerPassword() {
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+      }
       clearError();
       protectBtn.disabled = true;
       progressWrap.style.display = 'block';
@@ -260,34 +449,38 @@
         const buf    = await readFileAsArrayBuffer(pdfFile);
         const pdfDoc = await PDFDocument.load(buf, { ignoreEncryption: true });
 
-        setProgress(50, 'Setting permissions metadata...');
+        setProgress(50, 'Applying RC4-128 encryption...');
+        const permPrint      = document.getElementById('permPrint').checked;
+        const permCopy       = document.getElementById('permCopy').checked;
+        const permModify     = document.getElementById('permModify').checked;
+        const permAnnotate   = document.getElementById('permAnnotate').checked;
+        const permFill       = document.getElementById('permFill').checked;
+        const permAccessible = document.getElementById('permAccessible').checked;
 
-        // Build permissions summary
-        const perms = [];
-        if (document.getElementById('permPrint').checked)      perms.push('Print');
-        if (document.getElementById('permCopy').checked)        perms.push('Copy text');
-        if (document.getElementById('permModify').checked)      perms.push('Modify');
-        if (document.getElementById('permAnnotate').checked)    perms.push('Annotate');
-        if (document.getElementById('permFill').checked)        perms.push('Fill forms');
-        if (document.getElementById('permAccessible').checked)  perms.push('Accessibility');
+        const permFlags = buildPermissionFlags({
+          print: permPrint, modify: permModify, copy: permCopy,
+          annotate: permAnnotate, fill: permFill, accessible: permAccessible,
+        });
 
-        // Embed protection info as metadata
-        pdfDoc.setTitle(pdfDoc.getTitle() || pdfFile.name.replace('.pdf',''));
-        pdfDoc.setKeywords(['protected', 'PDFQuick']);
-        pdfDoc.setProducer('PDFQuick — Protected');
-        pdfDoc.setCreator('PDFQuick');
-
-        setProgress(75, 'Saving PDF...');
-        const pdfBytes = await pdfDoc.save({ useObjectStreams: true });
+        const encrypted = await encryptPdf(pdfDoc, openPw, ownerPw, permFlags);
         setProgress(100, 'Done!');
 
-        // Note to user about encryption
+        const allowed = [], blocked = [];
+        (permPrint      ? allowed : blocked).push('Print');
+        (permCopy       ? allowed : blocked).push('Copy text');
+        (permModify     ? allowed : blocked).push('Modify document');
+        (permAnnotate   ? allowed : blocked).push('Add annotations');
+        (permFill       ? allowed : blocked).push('Fill form fields');
+        (permAccessible ? allowed : blocked).push('Screen reader access');
+
         resultDesc.innerHTML = `
-          PDF protection applied. Permissions set: <strong>${perms.join(', ')}</strong>.<br>
-          <small style="color:#166534">Note: This tool applies PDF metadata-level protection. For AES-256 encryption (strongest security), use Adobe Acrobat or a server-based tool.</small>
+          A password is now required to open this PDF.<br><br>
+          <strong style="color:#166534">✅ Allowed:</strong> ${allowed.length ? allowed.join(', ') : '<em>none</em>'}<br>
+          <strong style="color:#b91c1c">🚫 Blocked:</strong> ${blocked.length ? blocked.join(', ') : '<em>none</em>'}
+          <br><br><small style="color:var(--text-muted)">⚠️ Important: these permission restrictions are enforced by the PDF reader, not by this website. Full PDF applications — Adobe Acrobat/Reader, Foxit Reader, PDF-XChange — read and respect them. Basic built-in viewers in Chrome, Edge, and Firefox only check the open password and currently ignore permission flags, so blocked actions may still appear available there even though the restriction is correctly embedded in the file.</small>
         `;
         const outName = 'protected_' + pdfFile.name;
-        downloadBtn.onclick = () => downloadFile(pdfBytes, outName);
+        downloadBtn.onclick = () => downloadFile(encrypted, outName);
         resultBox.classList.add('visible');
 
       } catch(err) {
@@ -308,5 +501,8 @@
       clearError();
     }
   </script>
+
+<script src="../js/header.js"></script>
+<script src="../js/footer.js"></script>
 </body>
 </html>

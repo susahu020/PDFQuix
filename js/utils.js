@@ -1,5 +1,5 @@
 // ============================================
-// PDFQuick — Shared Utilities (utils.js)
+// PDFQuix — Shared Utilities (utils.js)
 // ============================================
 
 // Format bytes to KB / MB

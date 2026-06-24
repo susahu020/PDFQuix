@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PDF to Excel — PDFQuix</title>
+  <meta name="description" content="Convert PDF tables to Excel (.xlsx) online for free. Extract data from PDFs instantly. No signup required."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    .preview-table-wrap {
+      overflow-x: auto; margin-top: 24px;
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      background: var(--white);
+    }
+    .preview-table {
+      border-collapse: collapse; width: 100%; font-size: 13px;
+      min-width: 480px;
+    }
+    .preview-table th {
+      background: var(--bg); border-bottom: 2px solid var(--border);
+      padding: 10px 14px; text-align: left; font-weight: 600;
+      color: var(--text-secondary); font-size: 12px; text-transform: uppercase;
+      letter-spacing: .04em; white-space: nowrap;
+    }
+    .preview-table td {
+      padding: 9px 14px; border-bottom: 1px solid var(--border);
+      color: var(--text-primary); vertical-align: top;
+    }
+    .preview-table tr:last-child td { border-bottom: none; }
+    .preview-table tr:hover td { background: var(--bg); }
+    .sheet-tabs {
+      display: flex; gap: 6px; margin-bottom: -1px; padding: 0 16px; flex-wrap: wrap;
+    }
+    .sheet-tab {
+      padding: 7px 16px; font-size: 13px; font-weight: 500;
+      border: 1px solid var(--border); border-bottom: none;
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      background: var(--bg); cursor: pointer; color: var(--text-secondary);
+      transition: all .15s;
+    }
+    .sheet-tab.active { background: var(--white); color: var(--red); border-color: var(--border); border-bottom-color: var(--white); }
+    .table-meta {
+      display: flex; align-items: center; gap: 16px; padding: 12px 16px;
+      border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-secondary);
+      flex-wrap: wrap;
+    }
+    .table-meta strong { color: var(--text-primary); }
+    .no-tables-msg {
+      text-align: center; padding: 48px 20px; color: var(--text-secondary);
+    }
+    .no-tables-msg .icon { font-size: 40px; margin-bottom: 12px; }
+    [data-theme="dark"] .preview-table th { background: var(--dm-surface2); color: var(--dm-text-secondary); }
+    [data-theme="dark"] .preview-table td { color: var(--dm-text-primary); border-color: var(--dm-border); }
+    [data-theme="dark"] .preview-table tr:hover td { background: var(--dm-surface2); }
+    [data-theme="dark"] .preview-table-wrap { background: var(--dm-surface); border-color: var(--dm-border); }
+    [data-theme="dark"] .sheet-tab { background: var(--dm-surface2); border-color: var(--dm-border); color: var(--dm-text-secondary); }
+    [data-theme="dark"] .sheet-tab.active { background: var(--dm-surface); color: #f87171; }
+    [data-theme="dark"] .table-meta { border-color: var(--dm-border); color: var(--dm-text-secondary); }
+    [data-theme="dark"] .table-meta strong { color: var(--dm-text-primary); }
+  </style>
+<script>
+(function(){
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
+</head>
+<body>
+
+
+<section class="tool-page-hero">
+  <div class="container">
+    <a href="../index.html" class="back-link">← All tools</a>
+    <h1>PDF to Excel</h1>
+    <p>Extract tables from any PDF and convert them to a formatted .xlsx spreadsheet. Works entirely in your browser.</p>
+  </div>
+</section>
+
+<section class="tool-page-body">
+  <div class="container">
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept=".pdf"/>
+      <div class="dropzone-icon">📊</div>
+      <h3>Drop your PDF here</h3>
+      <p>or click to browse your files</p>
+      <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Choose PDF</button>
+    </div>
+
+    <div id="editorWrap" style="display:none; margin-top:24px;">
+      <div class="options-panel">
+        <h3>Extraction options</h3>
+        <div class="option-row">
+          <span class="option-label">Pages</span>
+          <select class="option-select" id="pageRange">
+            <option value="all">All pages</option>
+            <option value="custom">Custom range</option>
+          </select>
+          <input id="customRange" type="text" placeholder="e.g. 1-3, 5, 7" style="display:none; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:14px; width:160px; font-family:inherit;"/>
+        </div>
+        <div class="option-row">
+          <span class="option-label">Sheet per page</span>
+          <select class="option-select" id="sheetMode">
+            <option value="one">All data in one sheet</option>
+            <option value="per-page">One sheet per page</option>
+          </select>
+        </div>
+        <div class="option-row">
+          <span class="option-label">First row as header</span>
+          <select class="option-select" id="headerRow">
+            <option value="yes">Yes — bold header row</option>
+            <option value="no">No — treat as data</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="action-bar">
+        <button class="btn-action" id="extractBtn" onclick="extractToExcel()">📊 Extract to Excel</button>
+        <div class="progress-wrap" id="progressWrap" style="display:none;">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+          <div class="progress-label" id="progressLabel">Extracting...</div>
+        </div>
+      </div>
+
+      <div id="previewSection" style="display:none; margin-top:28px;">
+        <h3 style="font-size:15px; font-weight:600; margin-bottom:12px;">Preview</h3>
+        <div class="sheet-tabs" id="sheetTabs"></div>
+        <div class="preview-table-wrap">
+          <div class="table-meta" id="tableMeta"></div>
+          <div id="tableBody"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="result-box" id="resultBox">
+      <h3>✅ Excel file ready!</h3>
+      <p id="resultDesc"></p>
+      <button class="btn-download" id="downloadBtn">⬇ Download .xlsx</button>
+      <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Convert another</button>
+    </div>
+
+    <div class="how-to">
+      <h2>How to convert PDF to Excel</h2>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><h4>Upload PDF</h4><p>Drop any PDF with tables or text data.</p></div>
+        <div class="step"><div class="step-num">2</div><h4>Configure</h4><p>Choose pages, sheet layout, and header options.</p></div>
+        <div class="step"><div class="step-num">3</div><h4>Preview</h4><p>Review the extracted data before downloading.</p></div>
+        <div class="step"><div class="step-num">4</div><h4>Download .xlsx</h4><p>Open in Excel, Google Sheets, or LibreOffice.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<script src="../js/utils.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  let pdfJsDoc = null, originalFile = null;
+  let extractedSheets = []; // [{name, rows: [[...]]}]
+  let activeSheet = 0;
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+
+  setupDropzone(dropzone, f => loadFile(f[0]));
+  fileInput.addEventListener('change', e => e.target.files[0] && loadFile(e.target.files[0]));
+
+  document.getElementById('pageRange').addEventListener('change', function() {
+    document.getElementById('customRange').style.display = this.value === 'custom' ? 'inline-block' : 'none';
+  });
+
+  async function loadFile(file) {
+    if (!file.name.endsWith('.pdf')) { showError('Please upload a PDF file.'); return; }
+    clearError();
+    originalFile = file;
+    const bytes = await readFileAsArrayBuffer(file);
+    pdfJsDoc = await pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise;
+    dropzone.style.display = 'none';
+    document.getElementById('editorWrap').style.display = 'block';
+    document.getElementById('resultBox').classList.remove('visible');
+    document.getElementById('previewSection').style.display = 'none';
+  }
+
+  function parsePageRange(str, total) {
+    const pages = new Set();
+    str.split(',').forEach(part => {
+      part = part.trim();
+      if (part.includes('-')) {
+        const [a, b] = part.split('-').map(Number);
+        for (let i = Math.max(1,a); i <= Math.min(total,b); i++) pages.add(i);
+      } else {
+        const n = parseInt(part);
+        if (n >= 1 && n <= total) pages.add(n);
+      }
+    });
+    return [...pages].sort((a,b) => a-b);
+  }
+
+  async function extractTextFromPage(pageNum) {
+    const page = await pdfJsDoc.getPage(pageNum);
+    const content = await page.getTextContent();
+    const vp = page.getViewport({ scale: 1 });
+
+    // Group text items into rows by Y position (within 5pt tolerance)
+    const items = content.items.map(item => ({
+      text: item.str,
+      x: item.transform[4],
+      y: vp.height - item.transform[5], // flip Y
+      w: item.width
+    })).filter(i => i.text.trim());
+
+    if (!items.length) return [];
+
+    // Sort by Y then X
+    items.sort((a,b) => a.y !== b.y ? a.y - b.y : a.x - b.x);
+
+    // Cluster into rows
+    const rows = [];
+    let currentRow = [items[0]];
+    let rowY = items[0].y;
+
+    for (let i = 1; i < items.length; i++) {
+      if (Math.abs(items[i].y - rowY) < 6) {
+        currentRow.push(items[i]);
+      } else {
+        rows.push(currentRow);
+        currentRow = [items[i]];
+        rowY = items[i].y;
+      }
+    }
+    if (currentRow.length) rows.push(currentRow);
+
+    // Convert rows to column-detected table rows
+    // Detect column boundaries by common X positions
+    const allX = items.map(i => Math.round(i.x / 8) * 8);
+    const xFreq = {};
+    allX.forEach(x => xFreq[x] = (xFreq[x] || 0) + 1);
+    const colBoundaries = Object.entries(xFreq)
+      .filter(([,v]) => v >= Math.max(2, rows.length * 0.15))
+      .map(([k]) => Number(k))
+      .sort((a,b) => a-b);
+
+    const tableRows = rows.map(row => {
+      if (colBoundaries.length < 2) {
+        // No clear columns — join text
+        return [row.map(i => i.text).join(' ')];
+      }
+      // Map each item to its column bucket
+      const cells = new Array(colBoundaries.length).fill('');
+      row.forEach(item => {
+        let col = 0;
+        for (let c = 0; c < colBoundaries.length; c++) {
+          if (item.x >= colBoundaries[c] - 4) col = c;
+        }
+        cells[col] = cells[col] ? cells[col] + ' ' + item.text : item.text;
+      });
+      return cells;
+    });
+
+    return tableRows;
+  }
+
+  async function extractToExcel() {
+    clearError();
+    document.getElementById('progressWrap').style.display = 'block';
+    document.getElementById('extractBtn').disabled = true;
+    extractedSheets = [];
+
+    try {
+      const total = pdfJsDoc.numPages;
+      const rangeMode = document.getElementById('pageRange').value;
+      const pages = rangeMode === 'all'
+        ? Array.from({length: total}, (_, i) => i + 1)
+        : parsePageRange(document.getElementById('customRange').value, total);
+
+      if (!pages.length) { showError('No valid pages in range.'); return; }
+
+      const sheetMode = document.getElementById('sheetMode').value;
+      const useHeader = document.getElementById('headerRow').value === 'yes';
+
+      if (sheetMode === 'per-page') {
+        for (let i = 0; i < pages.length; i++) {
+          setProgress(Math.round((i / pages.length) * 80), `Extracting page ${pages[i]}…`);
+          const rows = await extractTextFromPage(pages[i]);
+          extractedSheets.push({ name: `Page ${pages[i]}`, rows, useHeader });
+        }
+      } else {
+        let allRows = [];
+        for (let i = 0; i < pages.length; i++) {
+          setProgress(Math.round((i / pages.length) * 80), `Extracting page ${pages[i]}…`);
+          const rows = await extractTextFromPage(pages[i]);
+          if (i > 0 && rows.length) allRows.push([]); // blank separator row
+          allRows = allRows.concat(rows);
+        }
+        extractedSheets.push({ name: 'Extracted Data', rows: allRows, useHeader });
+      }
+
+      setProgress(90, 'Building spreadsheet…');
+      const wb = XLSX.utils.book_new();
+      extractedSheets.forEach(sheet => {
+        const ws = XLSX.utils.aoa_to_sheet(sheet.rows);
+        // Bold header row
+        if (useHeader && sheet.rows.length) {
+          const cols = sheet.rows[0].length;
+          for (let c = 0; c < cols; c++) {
+            const addr = XLSX.utils.encode_cell({r:0, c});
+            if (!ws[addr]) ws[addr] = {v: '', t:'s'};
+            ws[addr].s = { font: { bold: true } };
+          }
+        }
+        XLSX.utils.book_append_sheet(wb, ws, sheet.name.substring(0,31));
+      });
+
+      setProgress(100, 'Done!');
+      const xlsxData = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const totalRows = extractedSheets.reduce((s,sh) => s + sh.rows.length, 0);
+
+      document.getElementById('resultDesc').textContent =
+        `Extracted ${totalRows} rows across ${extractedSheets.length} sheet${extractedSheets.length>1?'s':''}. File size: ${formatBytes(xlsxData.length)}.`;
+      document.getElementById('downloadBtn').onclick = () =>
+        downloadFile(new Blob([xlsxData], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),
+          originalFile.name.replace('.pdf','.xlsx'), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      document.getElementById('resultBox').classList.add('visible');
+
+      // Show preview
+      activeSheet = 0;
+      renderPreview();
+      document.getElementById('previewSection').style.display = 'block';
+
+    } catch(err) {
+      showError('Error: ' + err.message);
+    } finally {
+      document.getElementById('progressWrap').style.display = 'none';
+      document.getElementById('extractBtn').disabled = false;
+    }
+  }
+
+  function renderPreview() {
+    const tabs = document.getElementById('sheetTabs');
+    tabs.innerHTML = extractedSheets.map((s,i) =>
+      `<button class="sheet-tab ${i===activeSheet?'active':''}" onclick="switchSheet(${i})">${s.name}</button>`
+    ).join('');
+
+    const sheet = extractedSheets[activeSheet];
+    const preview = sheet.rows.slice(0, 50);
+    const cols = Math.max(...preview.map(r => r.length), 0);
+
+    document.getElementById('tableMeta').innerHTML =
+      `<span><strong>${sheet.rows.length}</strong> rows</span><span><strong>${cols}</strong> columns</span><span style="color:var(--text-muted);">Showing first 50 rows</span>`;
+
+    if (!preview.length) {
+      document.getElementById('tableBody').innerHTML = '<div class="no-tables-msg"><div class="icon">📋</div><p>No text data found on this page.</p></div>';
+      return;
+    }
+
+    const header = sheet.useHeader ? preview[0] : null;
+    const dataRows = sheet.useHeader ? preview.slice(1) : preview;
+
+    let html = '<table class="preview-table"><thead><tr>';
+    if (header) {
+      header.forEach(h => html += `<th>${escH(h)}</th>`);
+    } else {
+      for (let c = 0; c < cols; c++) html += `<th>Col ${c+1}</th>`;
+    }
+    html += '</tr></thead><tbody>';
+    dataRows.forEach(row => {
+      html += '<tr>';
+      for (let c = 0; c < cols; c++) html += `<td>${escH(row[c] || '')}</td>`;
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('tableBody').innerHTML = html;
+  }
+
+  function switchSheet(i) {
+    activeSheet = i;
+    renderPreview();
+  }
+
+  function escH(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function resetTool() {
+    pdfJsDoc = null; originalFile = null; extractedSheets = [];
+    dropzone.style.display = 'block';
+    document.getElementById('editorWrap').style.display = 'none';
+    document.getElementById('previewSection').style.display = 'none';
+    document.getElementById('resultBox').classList.remove('visible');
+    clearError();
+  }
+</script>
+
+<script src="../js/header.js"></script>
+<script src="../js/footer.js"></script>
+</body>
+</html>

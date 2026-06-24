@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="../css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://unpkg.com/node-forge@1.3.1/dist/forge.min.js"></script>
   <style>
     .unlock-box {
       background: var(--white); border: 1px solid var(--border);
@@ -46,21 +47,16 @@
     .badge-unlocked { background: #f0fdf4; color: #16a34a; }
     .badge-open     { background: #eff6ff; color: #2563eb; }
   </style>
+<script>
+(function(){
+  var t=localStorage.getItem("pdfquick-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
 </head>
 <body>
 
-  <header class="header">
-    <div class="container header-inner">
-      <a href="../index.html" class="logo">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <rect width="28" height="28" rx="8" fill="#E63946"/>
-          <path d="M8 7h8l5 5v9a1 1 0 01-1 1H8a1 1 0 01-1-1V8a1 1 0 011-1z" fill="white" fill-opacity=".9"/>
-          <path d="M16 7l5 5h-4a1 1 0 01-1-1V7z" fill="white" fill-opacity=".5"/>
-        </svg>
-        PDFQuick
-      </a>
-    </div>
-  </header>
+  
 
   <section class="tool-page-hero">
     <div class="container">
@@ -143,16 +139,10 @@
     </div>
   </section>
 
-  <footer class="footer">
-    <div class="container footer-inner">
-      <span class="logo-small">PDFQuick</span>
-      <p>Free PDF tools for everyone.</p>
-    </div>
-  </footer>
-
+  
   <script src="../js/utils.js"></script>
   <script>
-    const { PDFDocument } = PDFLib;
+    const { PDFDocument, PDFDict, PDFName, PDFNumber, PDFString, PDFHexString, PDFArray, PDFRawStream } = PDFLib;
     let pdfFile = null;
     let pdfBytes = null;
     let isEncrypted = false;
@@ -175,6 +165,179 @@
     setupDropzone(dropzone, f => handleFile(f[0]));
     fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
 
+    // ════════════════════════════════════════════════════════════════════════
+    // RC4-128 decryption (PDF Standard Security Handler, Revision 2/3).
+    // pdf-lib has no password support whatsoever — its `{ password }` load
+    // option does not exist and always throws. We load the raw encrypted
+    // structure with `ignoreEncryption: true` and decrypt every object
+    // ourselves, the exact inverse of the logic used in protect.html.
+    // ════════════════════════════════════════════════════════════════════════
+
+    const PAD = [
+      0x28,0xBF,0x4E,0x5E,0x4E,0x75,0x8A,0x41,
+      0x64,0x00,0x4E,0x56,0xFF,0xFA,0x01,0x08,
+      0x2E,0x2E,0x00,0xB6,0xD0,0x68,0x3E,0x80,
+      0x2F,0x0C,0xA9,0xFE,0x64,0x53,0x69,0x7A
+    ];
+
+    function padPassword(pw) {
+      const bytes = [];
+      for (let i = 0; i < pw.length && bytes.length < 32; i++) bytes.push(pw.charCodeAt(i) & 0xff);
+      let p = 0;
+      while (bytes.length < 32) { bytes.push(PAD[p]); p++; }
+      return bytes.slice(0, 32);
+    }
+    function bytesToForgeBuffer(bytes) { const buf = forge.util.createBuffer(); for (const b of bytes) buf.putByte(b); return buf; }
+    function md5Bytes(byteArray) {
+      const md = forge.md.md5.create();
+      md.update(bytesToForgeBuffer(byteArray).bytes(), 'raw');
+      const hex = md.digest().toHex();
+      const out = [];
+      for (let i = 0; i < hex.length; i += 2) out.push(parseInt(hex.substr(i, 2), 16));
+      return out;
+    }
+    function rc4(key, data) {
+      const S = Array.from({ length: 256 }, (_, i) => i);
+      let j = 0;
+      for (let i = 0; i < 256; i++) { j = (j + S[i] + key[i % key.length]) & 0xff; [S[i], S[j]] = [S[j], S[i]]; }
+      let i2 = 0, j2 = 0;
+      const out = new Array(data.length);
+      for (let n = 0; n < data.length; n++) {
+        i2 = (i2 + 1) & 0xff; j2 = (j2 + S[i2]) & 0xff;
+        [S[i2], S[j2]] = [S[j2], S[i2]];
+        out[n] = data[n] ^ S[(S[i2] + S[j2]) & 0xff];
+      }
+      return out;
+    }
+    function permsToLEBytes(permFlags) {
+      const u = permFlags >>> 0;
+      return [u & 0xff, (u >>> 8) & 0xff, (u >>> 16) & 0xff, (u >>> 24) & 0xff];
+    }
+
+    function computeEncryptionKeyFromUserPw(userPw, ownerHashBytes, permFlags, fileIdBytes, keyLenBytes, revision) {
+      let input = [...padPassword(userPw), ...ownerHashBytes, ...permsToLEBytes(permFlags), ...fileIdBytes];
+      let key = md5Bytes(input);
+      const rounds = revision >= 3 ? 50 : 0;
+      for (let i = 0; i < rounds; i++) key = md5Bytes(key.slice(0, keyLenBytes));
+      return key.slice(0, keyLenBytes);
+    }
+
+    function computeUserHashCheck(encKey, fileIdBytes, revision) {
+      if (revision === 2) {
+        // R2: U = RC4(encKey, PAD) directly, 32 bytes, no MD5/xor rounds
+        return rc4(encKey, PAD.slice());
+      }
+      let data = md5Bytes([...PAD, ...fileIdBytes]);
+      for (let i = 0; i < 20; i++) data = rc4(encKey.map(b => b ^ i), data);
+      return data; // first 16 bytes compared against U for R3+
+    }
+
+    // Recover the padded user-password bytes from an owner password, then derive the encryption key
+    function computeEncryptionKeyFromOwnerPw(ownerPw, ownerHashBytes, permFlags, fileIdBytes, keyLenBytes, revision) {
+      let key = md5Bytes(padPassword(ownerPw));
+      const rounds = revision >= 3 ? 50 : 0;
+      for (let i = 0; i < rounds; i++) key = md5Bytes(key.slice(0, keyLenBytes));
+      key = key.slice(0, keyLenBytes);
+      let userPwPadded = ownerHashBytes.slice();
+      if (revision === 2) {
+        userPwPadded = rc4(key, userPwPadded);
+      } else {
+        for (let i = 19; i >= 0; i--) userPwPadded = rc4(key.map(b => b ^ i), userPwPadded);
+      }
+      let input = [...userPwPadded, ...ownerHashBytes, ...permsToLEBytes(permFlags), ...fileIdBytes];
+      let ekey = md5Bytes(input);
+      for (let i = 0; i < rounds; i++) ekey = md5Bytes(ekey.slice(0, keyLenBytes));
+      return ekey.slice(0, keyLenBytes);
+    }
+
+    function objectKey(encKey, objNum, genNum) {
+      const input = [...encKey, objNum & 0xff, (objNum >> 8) & 0xff, (objNum >> 16) & 0xff, genNum & 0xff, (genNum >> 8) & 0xff];
+      const key = md5Bytes(input);
+      const n = Math.min(encKey.length + 5, 16);
+      return key.slice(0, n);
+    }
+    function rc4CryptBytes(encKey, objNum, genNum, dataBytes) {
+      return rc4(objectKey(encKey, objNum, genNum), Array.from(dataBytes));
+    }
+
+    function decryptObjectInPlace(obj, encKey, objNum, genNum) {
+      if (obj instanceof PDFRawStream) {
+        obj.contents = Uint8Array.from(rc4CryptBytes(encKey, objNum, genNum, obj.contents));
+        return;
+      }
+      if (obj instanceof PDFDict) {
+        for (const [key, val] of obj.entries()) {
+          const replaced = decryptValueInPlace(val, encKey, objNum, genNum);
+          if (replaced !== undefined) obj.set(key, replaced);
+        }
+        return;
+      }
+      if (obj instanceof PDFArray) {
+        for (let i = 0; i < obj.size(); i++) {
+          const replaced = decryptValueInPlace(obj.get(i), encKey, objNum, genNum);
+          if (replaced !== undefined) obj.set(i, replaced);
+        }
+      }
+    }
+    function hexEscape(bytes) { return bytes.map(b => b.toString(16).padStart(2, '0')).join(''); }
+    function decryptValueInPlace(val, encKey, objNum, genNum) {
+      if (val instanceof PDFHexString) {
+        const bytes = Array.from(val.asBytes());
+        return PDFHexString.of(hexEscape(rc4CryptBytes(encKey, objNum, genNum, bytes)));
+      }
+      if (val instanceof PDFString) {
+        const bytes = Array.from(val.asBytes ? val.asBytes() : new TextEncoder().encode(val.value));
+        return PDFHexString.of(hexEscape(rc4CryptBytes(encKey, objNum, genNum, bytes)));
+      }
+      if (val instanceof PDFDict || val instanceof PDFArray) { decryptObjectInPlace(val, encKey, objNum, genNum); return undefined; }
+      return undefined;
+    }
+
+    // Returns { bytes, wasPassword: true } on success, or throws 'WRONG_PASSWORD' / 'UNSUPPORTED'
+    async function decryptPdfWithPassword(rawBytes, password) {
+      const doc = await PDFDocument.load(rawBytes, { ignoreEncryption: true });
+      if (!doc.context.trailerInfo.Encrypt) throw new Error('NOT_ENCRYPTED');
+
+      const encDict = doc.context.lookup(doc.context.trailerInfo.Encrypt, PDFDict);
+      const idArr   = doc.context.trailerInfo.ID;
+      if (!idArr || idArr.size() === 0) throw new Error('UNSUPPORTED: missing file ID');
+      const fileIdBytes = Array.from(idArr.get(0).asBytes());
+
+      const filterName = encDict.lookup(PDFName.of('Filter'), PDFName).asString();
+      if (filterName !== '/Standard') throw new Error('UNSUPPORTED: non-standard security handler');
+
+      const O = Array.from(encDict.lookup(PDFName.of('O'), PDFHexString).asBytes());
+      const U = Array.from(encDict.lookup(PDFName.of('U'), PDFHexString).asBytes());
+      const P = encDict.lookup(PDFName.of('P'), PDFNumber).asNumber();
+      const R = encDict.lookup(PDFName.of('R'), PDFNumber).asNumber();
+      const V = encDict.has(PDFName.of('V')) ? encDict.lookup(PDFName.of('V'), PDFNumber).asNumber() : 1;
+      if (V > 2) throw new Error('UNSUPPORTED: AES-encrypted PDFs (V4/V5) are not supported by this tool — only RC4 (V1/V2).');
+      const lengthBits  = encDict.has(PDFName.of('Length')) ? encDict.lookup(PDFName.of('Length'), PDFNumber).asNumber() : 40;
+      const keyLenBytes = lengthBits / 8;
+
+      let encKey = computeEncryptionKeyFromUserPw(password, O, P, fileIdBytes, keyLenBytes, R);
+      let check  = computeUserHashCheck(encKey, fileIdBytes, R);
+      let matched = check.slice(0, 16).every((b, i) => b === U[i]);
+
+      if (!matched) {
+        encKey  = computeEncryptionKeyFromOwnerPw(password, O, P, fileIdBytes, keyLenBytes, R);
+        check   = computeUserHashCheck(encKey, fileIdBytes, R);
+        matched = check.slice(0, 16).every((b, i) => b === U[i]);
+      }
+      if (!matched) throw new Error('WRONG_PASSWORD');
+
+      const encryptRefNum = doc.context.trailerInfo.Encrypt.objectNumber;
+      for (const [ref, obj] of doc.context.enumerateIndirectObjects()) {
+        if (ref.objectNumber === encryptRefNum) continue;
+        decryptObjectInPlace(obj, encKey, ref.objectNumber, ref.generationNumber);
+      }
+
+      doc.context.trailerInfo.Encrypt = undefined;
+      doc.context.trailerInfo.ID = undefined;
+
+      return await doc.save({ useObjectStreams: false });
+    }
+
     async function handleFile(file) {
       if (!file.name.endsWith('.pdf') && file.type !== 'application/pdf') { showError('Please upload a PDF.'); return; }
       pdfFile = file;
@@ -187,10 +350,10 @@
 
       renderFileList([file], fileListEl, () => { pdfFile = null; fileListEl.innerHTML = ''; statusArea.style.display='none'; pwBox.classList.remove('visible'); restrictBox.style.display='none'; });
 
-      // Try to load without password
+      // Detect encryption: pdf-lib's normal load() throws if the doc is encrypted —
+      // that's our reliable signal, since pdf-lib can't decrypt RC4 PDFs itself.
       try {
-        const doc = await PDFDocument.load(pdfBytes);
-        // Loaded fine — check for restriction (owner password)
+        await PDFDocument.load(pdfBytes.slice(0));
         isEncrypted = false;
         statusArea.style.display = 'block';
         statusBadge.className = 'status-badge badge-open';
@@ -216,7 +379,6 @@
       else { input.type = 'password'; btn.textContent = '👁'; }
     }
 
-    // Handle Enter key in password field
     document.getElementById('pdfPw').addEventListener('keydown', e => { if (e.key === 'Enter') unlockBtn.click(); });
 
     unlockBtn.addEventListener('click', async () => {
@@ -228,10 +390,8 @@
       setProgress(30, 'Verifying password...');
 
       try {
-        // Try loading with password
-        const doc = await PDFDocument.load(pdfBytes, { password });
-        setProgress(70, 'Removing protection...');
-        const unlockedBytes = await doc.save({ useObjectStreams: true });
+        setProgress(60, 'Decrypting PDF...');
+        const unlockedBytes = await decryptPdfWithPassword(pdfBytes.slice(0), password);
         setProgress(100, 'Done!');
 
         resultDesc.textContent = `Password removed from "${pdfFile.name}". The file can now be opened without a password.`;
@@ -241,10 +401,13 @@
         statusArea.style.display = 'none';
 
       } catch(err) {
-        if (err.message && err.message.toLowerCase().includes('password')) {
-          showError('Incorrect password. Please try again.');
+        const msg = err.message || '';
+        if (msg.includes('WRONG_PASSWORD')) {
+          showError('Incorrect password. Please check it and try again.');
+        } else if (msg.includes('UNSUPPORTED')) {
+          showError(msg.replace('UNSUPPORTED: ', '') || 'This PDF uses an encryption method not supported by this tool.');
         } else {
-          showError('Unlock failed: ' + err.message);
+          showError('Unlock failed: ' + msg);
         }
       } finally {
         unlockBtn.disabled = false;
@@ -258,7 +421,7 @@
       actionBar.style.display = 'flex';
       setProgress(40, 'Removing restrictions...');
       try {
-        const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+        const doc = await PDFDocument.load(pdfBytes.slice(0), { ignoreEncryption: true });
         setProgress(80, 'Saving...');
         const bytes = await doc.save({ useObjectStreams: true });
         setProgress(100, 'Done!');
@@ -285,5 +448,8 @@
       clearError();
     }
   </script>
+
+<script src="../js/header.js"></script>
+<script src="../js/footer.js"></script>
 </body>
 </html>

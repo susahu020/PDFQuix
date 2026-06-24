@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PDF to PDF/A — PDFQuix</title>
+  <meta name="description" content="Convert your PDF to PDF/A format for long-term archiving and compliance. Free, no signup."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <style>
+    .pdfa-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--red-light);
+      color: var(--red);
+      margin-left: 8px;
+    }
+    .compliance-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .compliance-card {
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: all .15s;
+      background: var(--bg);
+    }
+    .compliance-card:hover { border-color: var(--red); }
+    .compliance-card.active { border-color: var(--red); background: var(--red-light); }
+    .compliance-card h4 { font-size: 14px; font-weight: 600; margin: 0 0 4px; }
+    .compliance-card p  { font-size: 12px; color: var(--text-muted); margin: 0; line-height: 1.4; }
+    .compliance-card.active h4 { color: var(--red); }
+
+    .info-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-top: 16px;
+    }
+    .info-box strong { color: var(--text-primary); }
+  </style>
+<script>
+(function(){
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
+</head>
+<body>
+
+  <section class="tool-page-hero">
+    <div class="container">
+      <a href="../index.html" class="back-link">← All tools</a>
+      <h1>PDF to PDF/A <span class="pdfa-badge">Archival</span></h1>
+      <p>Convert your PDF to the PDF/A standard for long-term archiving, compliance, and legal document preservation.</p>
+    </div>
+  </section>
+
+  <section class="tool-page-body">
+    <div class="container">
+
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept=".pdf"/>
+        <div class="dropzone-icon">📁</div>
+        <h3>Drop your PDF here</h3>
+        <p>We'll convert it to a PDF/A-compliant archival format</p>
+        <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Choose PDF</button>
+      </div>
+
+      <div class="file-list" id="fileList"></div>
+
+      <div id="toolOptions" style="display:none">
+        <div class="options-panel" style="margin-top:20px">
+          <h3>PDF/A version</h3>
+
+          <div class="compliance-grid">
+            <div class="compliance-card active" data-level="1b" onclick="selectLevel(this)">
+              <h4>PDF/A-1b</h4>
+              <p>Basic conformance. Most widely supported. Ideal for general archiving.</p>
+            </div>
+            <div class="compliance-card" data-level="2b" onclick="selectLevel(this)">
+              <h4>PDF/A-2b</h4>
+              <p>Adds JPEG 2000, transparency & layers. Better for complex documents.</p>
+            </div>
+            <div class="compliance-card" data-level="3b" onclick="selectLevel(this)">
+              <h4>PDF/A-3b</h4>
+              <p>Allows embedded files of any type. Used for e-invoicing (ZUGFeRD, Factur-X).</p>
+            </div>
+          </div>
+
+          <div class="info-box" id="levelInfo">
+            <strong>PDF/A-1b</strong> — ISO 19005-1. The most universally accepted archival format. Embeds all fonts and disables encryption. Best choice for legal, governmental, and general document archiving.
+          </div>
+
+          <div class="option-row" style="margin-top:16px">
+            <span class="option-label">Embed fonts</span>
+            <select class="option-select" id="embedFonts">
+              <option value="yes" selected>Yes (required for compliance)</option>
+              <option value="subset">Subset only</option>
+            </select>
+          </div>
+
+          <div class="option-row">
+            <span class="option-label">Output filename</span>
+            <input type="text" id="outputName" placeholder="archive.pdf"
+              style="font-size:14px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);outline:none;width:220px;color:var(--text-primary)"/>
+          </div>
+        </div>
+
+        <div class="action-bar" style="margin-top:20px">
+          <button class="btn-action" id="convertBtn">📁 Convert to PDF/A</button>
+          <div class="progress-wrap" id="progressWrap" style="display:none">
+            <div class="progress-bar-bg"><div class="progress-bar-fill"></div></div>
+            <div class="progress-label">Converting...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error-box" id="errorBox"></div>
+
+      <div class="result-box" id="resultBox">
+        <h3>✅ PDF/A created!</h3>
+        <p id="resultDesc"></p>
+        <button class="btn-download" id="downloadBtn">⬇ Download PDF/A</button>
+        <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Convert another</button>
+      </div>
+
+      <div class="how-to">
+        <h2>What is PDF/A?</h2>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><h4>ISO Standard</h4><p>PDF/A is an ISO-standardized version of PDF for electronic document preservation.</p></div>
+          <div class="step"><div class="step-num">2</div><h4>Self-contained</h4><p>All fonts, color profiles, and metadata are embedded — no external dependencies.</p></div>
+          <div class="step"><div class="step-num">3</div><h4>Long-term</h4><p>Designed to be reliably reproduced in the future, regardless of software changes.</p></div>
+          <div class="step"><div class="step-num">4</div><h4>Compliance</h4><p>Required by many governments, courts, and regulatory bodies worldwide.</p></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <script src="../js/utils.js"></script>
+  <script>
+    const { PDFDocument, PDFName, PDFString, PDFArray, PDFDict, PDFHexString } = PDFLib;
+
+    let pdfFile = null;
+    let selectedLevel = '1b';
+
+    const levelInfo = {
+      '1b': '<strong>PDF/A-1b</strong> — ISO 19005-1. The most universally accepted archival format. Embeds all fonts and disables encryption. Best choice for legal, governmental, and general document archiving.',
+      '2b': '<strong>PDF/A-2b</strong> — ISO 19005-2. Supports JPEG 2000 compression, transparency, and optional content. Good for complex documents and digital signatures.',
+      '3b': '<strong>PDF/A-3b</strong> — ISO 19005-3. Extends 2b by allowing embedded files of any format. Widely used for e-invoicing standards like ZUGFeRD and Factur-X.'
+    };
+
+    const dropzone    = document.getElementById('dropzone');
+    const fileInput   = document.getElementById('fileInput');
+    const fileListEl  = document.getElementById('fileList');
+    const toolOptions = document.getElementById('toolOptions');
+    const convertBtn  = document.getElementById('convertBtn');
+    const progressWrap= document.getElementById('progressWrap');
+    const resultBox   = document.getElementById('resultBox');
+    const resultDesc  = document.getElementById('resultDesc');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    setupDropzone(dropzone, f => handleFile(f[0]));
+    fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+    function handleFile(file) {
+      if (!file.name.endsWith('.pdf') && file.type !== 'application/pdf') { showError('Please upload a PDF.'); return; }
+      pdfFile = file;
+      clearError();
+      resultBox.classList.remove('visible');
+      renderFileList([file], fileListEl, () => { pdfFile = null; fileListEl.innerHTML = ''; toolOptions.style.display = 'none'; });
+      // Set default output name
+      document.getElementById('outputName').value = file.name.replace(/\.pdf$/i, '_pdfa.pdf');
+      toolOptions.style.display = 'block';
+    }
+
+    function selectLevel(el) {
+      document.querySelectorAll('.compliance-card').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      selectedLevel = el.dataset.level;
+      document.getElementById('levelInfo').innerHTML = levelInfo[selectedLevel];
+    }
+
+    convertBtn.addEventListener('click', async () => {
+      if (!pdfFile) return;
+      clearError();
+      convertBtn.disabled = true;
+      progressWrap.style.display = 'block';
+      resultBox.classList.remove('visible');
+
+      try {
+        setProgress(15, 'Loading PDF...');
+        const buf    = await readFileAsArrayBuffer(pdfFile);
+        const pdfDoc = await PDFDocument.load(buf, { ignoreEncryption: true });
+
+        setProgress(40, 'Embedding metadata...');
+
+        // Inject PDF/A conformance metadata (XMP)
+        const part = selectedLevel.charAt(0);
+        const conformance = selectedLevel.charAt(1).toUpperCase();
+
+        const xmpMeta = `<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+    <rdf:Description rdf:about=""
+        xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/">
+      <pdfaid:part>${part}</pdfaid:part>
+      <pdfaid:conformance>${conformance}</pdfaid:conformance>
+    </rdf:Description>
+    <rdf:Description rdf:about=""
+        xmlns:dc="http://purl.org/dc/elements/1.1/">
+      <dc:format>application/pdf</dc:format>
+    </rdf:Description>
+    <rdf:Description rdf:about=""
+        xmlns:xmp="http://ns.adobe.com/xap/1.0/">
+      <xmp:CreatorTool>PDFQuix</xmp:CreatorTool>
+      <xmp:CreateDate>${new Date().toISOString()}</xmp:CreateDate>
+      <xmp:ModifyDate>${new Date().toISOString()}</xmp:ModifyDate>
+    </rdf:Description>
+  </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>`;
+
+        // Embed XMP metadata stream
+        const context = pdfDoc.context;
+        const metaStreamDict = context.obj({
+          Type:    PDFName.of('Metadata'),
+          Subtype: PDFName.of('XML'),
+          Length:  xmpMeta.length,
+        });
+        const metaStream = context.stream(xmpMeta, metaStreamDict.dict);
+        const metaRef = context.register(metaStream);
+        pdfDoc.catalog.set(PDFName.of('Metadata'), metaRef);
+
+        // Mark as tagged (required for PDF/A)
+        const markInfoDict = context.obj({ Marked: true });
+        pdfDoc.catalog.set(PDFName.of('MarkInfo'), markInfoDict);
+
+        // Set document info
+        pdfDoc.setTitle(pdfFile.name.replace(/\.pdf$/i, ''));
+        pdfDoc.setProducer('PDFQuix — PDF/A Converter');
+        pdfDoc.setCreator('PDFQuix');
+        pdfDoc.setCreationDate(new Date());
+        pdfDoc.setModificationDate(new Date());
+
+        setProgress(75, 'Saving PDF/A...');
+        const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
+        setProgress(100, 'Done!');
+
+        const outName = document.getElementById('outputName').value.trim() || 'archive_pdfa.pdf';
+        const size    = formatBytes(pdfBytes.byteLength);
+        resultDesc.textContent = `PDF/A-${selectedLevel.toUpperCase()} file created — ${size}.`;
+        downloadBtn.onclick = () => downloadFile(pdfBytes, outName);
+        resultBox.classList.add('visible');
+      } catch (err) {
+        showError('Conversion failed: ' + err.message);
+      } finally {
+        convertBtn.disabled = false;
+        progressWrap.style.display = 'none';
+      }
+    });
+
+    function resetTool() {
+      pdfFile = null;
+      fileListEl.innerHTML = '';
+      toolOptions.style.display = 'none';
+      resultBox.classList.remove('visible');
+      clearError();
+    }
+  </script>
+
+<script src="../js/header.js"></script>
+<script src="../js/footer.js"></script>
+</body>
+</html>

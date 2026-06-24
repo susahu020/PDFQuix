@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Repair PDF — PDFQuix</title>
+  <meta name="description" content="Repair corrupted or damaged PDF files online for free. Fix PDFs that won't open. No signup required."/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    .repair-log {
+      background: #0f1117; color: #e2e8f0; border-radius: var(--radius-lg);
+      padding: 20px 24px; font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: 13px; line-height: 1.8; margin-top: 24px;
+      max-height: 320px; overflow-y: auto; border: 1px solid #2e3347;
+    }
+    .log-line { display: flex; gap: 12px; }
+    .log-line .ts { color: #64748b; flex-shrink: 0; }
+    .log-line .msg { flex: 1; }
+    .log-line.ok .msg { color: #86efac; }
+    .log-line.warn .msg { color: #fde68a; }
+    .log-line.err .msg { color: #fca5a5; }
+    .log-line.info .msg { color: #93c5fd; }
+    .repair-summary {
+      display: flex; gap: 16px; flex-wrap: wrap; margin-top: 20px;
+    }
+    .summary-card {
+      flex: 1; min-width: 130px; background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 16px 18px;
+    }
+    .summary-card .icon { font-size: 22px; margin-bottom: 6px; }
+    .summary-card .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+    .summary-card .value { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    .summary-card.success { border-color: #86efac; background: #f0fdf4; }
+    .summary-card.warning { border-color: #fde68a; background: #fefce8; }
+    .summary-card.error   { border-color: #fca5a5; background: #fef2f2; }
+    [data-theme="dark"] .summary-card { background: var(--dm-surface); border-color: var(--dm-border); }
+    [data-theme="dark"] .summary-card .value { color: var(--dm-text-primary); }
+    [data-theme="dark"] .summary-card.success { background: rgba(22,163,74,.1); border-color: #16a34a; }
+    [data-theme="dark"] .summary-card.warning { background: rgba(202,138,4,.1); border-color: #ca8a04; }
+  </style>
+<script>
+(function(){
+  var t=localStorage.getItem("PDFQuix-theme")||(window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  document.documentElement.setAttribute("data-theme",t);
+})();
+</script>
+</head>
+<body>
+
+
+<section class="tool-page-hero">
+  <div class="container">
+    <a href="../index.html" class="back-link">← All tools</a>
+    <h1>Repair PDF</h1>
+    <p>Fix corrupted, damaged, or unreadable PDF files. Rebuilds structure, removes bad objects, and saves a clean copy.</p>
+  </div>
+</section>
+
+<section class="tool-page-body">
+  <div class="container">
+
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius-md);padding:14px 18px;margin-bottom:20px;font-size:13px;color:#1e40af;display:flex;gap:10px;align-items:flex-start;">
+      <span style="font-size:18px;">🔧</span>
+      <div>
+        <strong>What does PDF Repair do?</strong><br>
+        This tool re-builds your PDF's internal structure from scratch using pdf-lib — it fixes corrupted cross-reference tables, bad linearization, and broken metadata that stop PDF readers from opening the file. It does <em>not</em> recover images or text that were physically deleted or overwritten; it fixes the <em>file structure</em> so your PDF reader can read it again.
+      </div>
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept=".pdf"/>
+      <div class="dropzone-icon">🔧</div>
+      <h3>Drop your damaged PDF here</h3>
+      <p>or click to browse — we'll try to recover as much as possible</p>
+      <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">Choose PDF</button>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div id="repairWrap" style="display:none; margin-top:24px;">
+      <div class="action-bar">
+        <div class="progress-wrap" id="progressWrap" style="display:none;">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+          <div class="progress-label" id="progressLabel">Repairing…</div>
+        </div>
+      </div>
+
+      <div class="repair-log" id="repairLog"></div>
+
+      <div class="repair-summary" id="repairSummary" style="display:none;"></div>
+    </div>
+
+    <div class="result-box" id="resultBox">
+      <h3>🔧 PDF repaired!</h3>
+      <p id="resultDesc"></p>
+      <button class="btn-download" id="downloadBtn">⬇ Download repaired PDF</button>
+      <button class="btn-upload" style="margin-left:12px;margin-top:0;background:#fff;color:#E63946;border:1px solid #E63946;" onclick="resetTool()">Repair another</button>
+    </div>
+
+    <div class="how-to">
+      <h2>What does PDF repair fix?</h2>
+      <div class="steps">
+        <div class="step"><div class="step-num">✓</div><h4>Corrupted cross-reference tables</h4><p>Rebuilds the PDF's internal index so readers can find all objects.</p></div>
+        <div class="step"><div class="step-num">✓</div><h4>Truncated files</h4><p>Recovers content from PDFs that got cut off mid-save.</p></div>
+        <div class="step"><div class="step-num">✓</div><h4>Bad metadata</h4><p>Removes or fixes broken document info that causes crashes.</p></div>
+        <div class="step"><div class="step-num">✓</div><h4>Linearization issues</h4><p>Re-serializes the PDF structure from scratch using pdf-lib.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<script src="../js/utils.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const { PDFDocument } = PDFLib;
+
+  let originalBytes = null, fileName = '';
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  setupDropzone(dropzone, f => loadFile(f[0]));
+  fileInput.addEventListener('change', e => e.target.files[0] && loadFile(e.target.files[0]));
+
+  const logEl = document.getElementById('repairLog');
+  function log(msg, type='info') {
+    const ts = new Date().toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    logEl.innerHTML += `<div class="log-line ${type}"><span class="ts">[${ts}]</span><span class="msg">${escH(msg)}</span></div>`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  async function loadFile(file) {
+    if (!file.name.endsWith('.pdf')) { showError('Please upload a PDF file.'); return; }
+    clearError();
+    fileName = file.name;
+    originalBytes = await readFileAsArrayBuffer(file);
+    dropzone.style.display = 'none';
+    logEl.innerHTML = '';
+    document.getElementById('repairWrap').style.display = 'block';
+    document.getElementById('repairSummary').style.display = 'none';
+    document.getElementById('resultBox').classList.remove('visible');
+    document.getElementById('progressWrap').style.display = 'block';
+    await repairPDF();
+  }
+
+  async function repairPDF() {
+    const issues = [];
+    const fixes = [];
+
+    try {
+      log(`Loading file: ${fileName} (${formatBytes(originalBytes.byteLength)})`, 'info');
+      setProgress(5, 'Checking file header…');
+      await sleep(120);
+
+      // Check PDF header
+      const headerBytes = new Uint8Array(originalBytes.slice(0, 8));
+      const header = String.fromCharCode(...headerBytes);
+      if (!header.startsWith('%PDF-')) {
+        issues.push('Missing PDF header'); log('⚠ Missing or corrupt PDF header', 'warn');
+      } else {
+        log(`✓ PDF header valid: ${header.substring(0,8).trim()}`, 'ok');
+      }
+
+      setProgress(15, 'Parsing structure…');
+      await sleep(150);
+
+      // Check EOF marker
+      const tail = new Uint8Array(originalBytes.slice(-32));
+      const tailStr = String.fromCharCode(...tail);
+      if (!tailStr.includes('%%EOF')) {
+        issues.push('Missing EOF marker'); log('⚠ Missing %%EOF marker — file may be truncated', 'warn');
+      } else {
+        log('✓ EOF marker found', 'ok');
+      }
+
+      setProgress(25, 'Loading with pdf-lib…');
+      await sleep(100);
+
+      let pdfDoc;
+      let loadOpts = [
+        { ignoreEncryption: true, throwOnInvalidObject: false },
+        { ignoreEncryption: true, throwOnInvalidObject: true },
+        {},
+      ];
+
+      let loaded = false;
+      for (const opts of loadOpts) {
+        try {
+          pdfDoc = await PDFDocument.load(originalBytes, opts);
+          loaded = true;
+          log('✓ PDF structure parsed successfully', 'ok');
+          break;
+        } catch(e) {
+          issues.push('Load error: ' + e.message.substring(0,80));
+          log(`⚠ Load attempt failed: ${e.message.substring(0,80)}`, 'warn');
+        }
+      }
+
+      if (!loaded) {
+        // Attempt raw recovery: find page objects in binary
+        log('⚠ Standard parsing failed — attempting raw recovery…', 'warn');
+        setProgress(40, 'Raw recovery…');
+        await sleep(200);
+        try {
+          const rawStr = new TextDecoder('latin1').decode(originalBytes);
+          const pageCount = (rawStr.match(/\/Type\s*\/Page\b/g)||[]).length;
+          log(`ℹ Found ${pageCount} page object(s) in raw data`, 'info');
+          issues.push('Could not fully parse PDF objects');
+          // Create a minimal replacement PDF
+          pdfDoc = await PDFDocument.create();
+          const p = pdfDoc.addPage();
+          const { width, height } = p.getSize();
+          const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+          p.drawText('PDF Recovery Notice', {x:50,y:height-80,size:18,font,color:PDFLib.rgb(0.9,0.1,0.1)});
+          p.drawText(`Original file: ${fileName}`, {x:50,y:height-120,size:12,font,color:PDFLib.rgb(0.2,0.2,0.2)});
+          p.drawText(`The original PDF was too corrupted to fully recover.`, {x:50,y:height-150,size:11,font,color:PDFLib.rgb(0.4,0.4,0.4)});
+          p.drawText(`Detected ${pageCount} page(s) in raw data.`, {x:50,y:height-170,size:11,font,color:PDFLib.rgb(0.4,0.4,0.4)});
+          p.drawText(`Try our OCR tool if you need the content.`, {x:50,y:height-195,size:11,font,color:PDFLib.rgb(0.4,0.4,0.4)});
+          fixes.push('Created recovery document with file info');
+          log('✓ Recovery document created', 'ok');
+        } catch(e2) {
+          log('✗ Raw recovery also failed: ' + e2.message.substring(0,80), 'err');
+          showError('This PDF is too severely corrupted to repair in-browser. Try our OCR tool instead.');
+          document.getElementById('progressWrap').style.display = 'none';
+          return;
+        }
+      }
+
+      setProgress(50, 'Checking pages…');
+      await sleep(120);
+
+      const pages = pdfDoc.getPages();
+      log(`✓ ${pages.length} page(s) recovered`, 'ok');
+
+      // Check for and strip broken metadata
+      setProgress(60, 'Fixing metadata…');
+      await sleep(100);
+      try {
+        const info = pdfDoc.getTitle();
+        log('✓ Document metadata intact', 'ok');
+      } catch(e) {
+        issues.push('Corrupt metadata');
+        log('⚠ Corrupt metadata detected — stripping', 'warn');
+        try { pdfDoc.setTitle(''); pdfDoc.setAuthor(''); pdfDoc.setSubject(''); fixes.push('Metadata reset'); } catch(_) {}
+      }
+
+      // Check page dimensions
+      setProgress(70, 'Validating pages…');
+      await sleep(100);
+      let badPages = 0;
+      pages.forEach((page, i) => {
+        try {
+          const { width, height } = page.getSize();
+          if (!width || !height || width < 1 || height < 1) {
+            badPages++;
+            log(`⚠ Page ${i+1} has invalid dimensions (${width}×${height})`, 'warn');
+          }
+        } catch(e) { badPages++; }
+      });
+      if (badPages === 0) log('✓ All page dimensions valid', 'ok');
+      else { issues.push(`${badPages} pages with invalid dimensions`); fixes.push('Page dimension issues noted'); }
+
+      // Re-serialize the PDF completely (the main "repair" step)
+      setProgress(82, 'Rebuilding PDF structure…');
+      await sleep(180);
+      log('↻ Re-serializing PDF (rebuilds cross-reference table, linearization)…', 'info');
+
+      const repairedBytes = await pdfDoc.save({ useObjectStreams: false, addDefaultPage: false, objectsPerTick: 50 });
+      fixes.push('Cross-reference table rebuilt');
+      fixes.push('PDF structure re-serialized from scratch');
+      log('✓ PDF structure rebuilt successfully', 'ok');
+
+      // Verify with pdf.js
+      setProgress(92, 'Verifying repaired PDF…');
+      await sleep(100);
+      try {
+        const verifyDoc = await pdfjsLib.getDocument({ data: new Uint8Array(repairedBytes) }).promise;
+        log(`✓ Verified: repaired PDF opens correctly (${verifyDoc.numPages} pages)`, 'ok');
+        fixes.push(`Verified: ${verifyDoc.numPages} pages readable`);
+      } catch(e) {
+        log('⚠ Verification partial: ' + e.message.substring(0,60), 'warn');
+      }
+
+      setProgress(100, 'Done!');
+      log('─── Repair complete ───', 'info');
+
+      // Summary cards
+      const summaryEl = document.getElementById('repairSummary');
+      summaryEl.style.display = 'flex';
+      const change = originalBytes.byteLength - repairedBytes.length;
+      const pct = Math.abs(Math.round(change / originalBytes.byteLength * 100));
+      summaryEl.innerHTML = `
+        <div class="summary-card success"><div class="icon">📄</div><div class="label">Pages recovered</div><div class="value">${pages.length}</div></div>
+        <div class="summary-card ${issues.length?'warning':'success'}"><div class="icon">${issues.length?'⚠️':'✅'}</div><div class="label">Issues found</div><div class="value">${issues.length}</div></div>
+        <div class="summary-card success"><div class="icon">🔧</div><div class="label">Fixes applied</div><div class="value">${fixes.length}</div></div>
+        <div class="summary-card"><div class="icon">📦</div><div class="label">Size change</div><div class="value">${change>0?'-':'+'}${pct}%</div></div>
+      `;
+
+      document.getElementById('resultDesc').textContent =
+        `Repaired PDF with ${pages.length} page${pages.length>1?'s':''} — ${formatBytes(repairedBytes.length)} · ${fixes.length} fix${fixes.length>1?'es':''} applied.`;
+      document.getElementById('downloadBtn').onclick = () =>
+        downloadFile(repairedBytes, fileName.replace('.pdf','_repaired.pdf'));
+      document.getElementById('resultBox').classList.add('visible');
+      document.getElementById('resultBox').scrollIntoView({ behavior:'smooth', block:'nearest' });
+
+    } catch(err) {
+      log('✗ Unexpected error: ' + err.message, 'err');
+      showError('Repair failed: ' + err.message);
+    } finally {
+      document.getElementById('progressWrap').style.display = 'none';
+    }
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function resetTool() {
+    originalBytes = null; fileName = '';
+    dropzone.style.display = 'block';
+    document.getElementById('repairWrap').style.display = 'none';
+    document.getElementById('resultBox').classList.remove('visible');
+    logEl.innerHTML = '';
+    clearError();
+  }
+</script>
+
+<script src="../js/header.js"></script>
+<script src="../js/footer.js"></script>
+</body>
+</html>
